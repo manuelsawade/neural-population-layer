@@ -1,3 +1,4 @@
+import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader 
@@ -9,9 +10,11 @@ class Trainer:
         self.loss_fn = nn.CrossEntropyLoss()
         self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
         self.test_loader = DataLoader(test_data, batch_size=batch_size)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(self, epochs):
+        self.model.to(self.device)
+        
         for epoch in range(epochs):
             self.model.train()
             for x, y in self.train_loader:
@@ -22,7 +25,9 @@ class Trainer:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
-            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+            sys.stdout.write(f'\r                  Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+            sys.stdout.flush()
+            
 
     def test(self):
         self.model.eval()
@@ -38,4 +43,4 @@ class Trainer:
 
         test_loss /= num_batches
         correct /= size
-        print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        print(f"\nTest Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")

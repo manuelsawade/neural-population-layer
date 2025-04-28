@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.populations import Gaussian, MexicanHat
+from populations import Gaussian, MexicanHat
 
 class PopulationCodedLayer(nn.Module):
     def __init__(self, input_dim, hidden_dim, alpha=100.0, sigma=32.0, debug=False):
