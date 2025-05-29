@@ -1,3 +1,4 @@
+from enum import Enum
 import torch
 
 class Gaussian:
@@ -7,11 +8,22 @@ class Gaussian:
 class MexicanHat:
     def mask(self, x, mu, sigma):
         return (1 - ((x - mu) / sigma) ** 2) * torch.exp(-0.5 * ((x - mu) / sigma) ** 2)
-    
-class Oscillatory:
-    def mask(self, x, mu, sigma):
-        positions = torch.arange(x, device=x.device).float()
 
-        theta = 2 * torch.pi * self.freq * positions / x + self.phase
-        sine_mask = (torch.sin(theta) + 1) / 2
+class Distribution(Enum):
+    ZERO_MEAN = 0,
+    ZERO_BASE = 1,
+
+class SineWave:
+    def __call__(self, freq, phase, amp, x_pos, x_size, dist=Distribution.ZERO_MEAN):
+        if dist == Distribution.ZERO_MEAN: 
+            return self._sine(freq, phase, amp, x_pos, x_size)
+        
+        return self._sine_base(freq, phase, amp, x_pos, x_size)
+        
+
+    def _sine(self, freq, phase, amp, x_pos, x_size): 
+        return amp * torch.sin(2 * torch.pi * freq * x_pos / x_size + phase)
+
+    def _sine_base(self, freq, phase, amp, x_pos, x_size):
+        return amp * (torch.sin(2 * torch.pi * freq * x_pos / x_size + phase) + 1)
         

@@ -10,18 +10,7 @@ layer = PopulationCodedLayer(input_dim=5, hidden_dim=5, debug=True)
 
 output = layer(x)
 
-transform_with_noise = transforms.Compose([
-    transforms.ToTensor(),
-    AddGaussianNoise(0.0, noise_level),
-    transforms.Lambda(lambda x: torch.clamp(x, 0.0, 1.0))
-])
 
-training_data = datasets.MNIST(
-    root="data",
-    train=True,
-    download=True,
-    transform=transform_with_noise
-)
 
 image, label = training_data[0]  # image is a tensor
 

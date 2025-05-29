@@ -3,26 +3,29 @@ import torch.linalg as L
 import torch.nn as nn
 import torch.nn.functional as F
 
-from populations import MexicanHat
+from populations import Distribution, MexicanHat, SineWave
 
 class FixedPopulation(nn.Module):
-    def __init__(self, mu=63.5, sigma=32.0):
+    def __init__(self, freq=16.0, phase=0.0, amp=1.0, dist=Distribution.ZERO_MEAN, grad_phase=False, grad_amp=False):
         super().__init__()
-        self.mu = mu
-        self.sigma = sigma
-        self.population = MexicanHat()
+        self.freq = nn.Parameter(torch.tensor(freq), requires_grad=False)
+        self.phase = nn.Parameter(torch.tensor(phase), requires_grad=grad_phase)
+        self.amp = nn.Parameter(torch.tensor(amp), requires_grad=grad_amp)
+        self.population = SineWave()
+        self.dist = dist
+        self.eps = 1e-8
 
     def forward(self, x):
-        z_norm = x / x.max(dim=-1, keepdim=True).values
+        x_size = x.size(dim=1)
+        x_pos = torch.arange(x_size, device=x.device)
 
-        positions = torch.arange(x.size(dim=1), device=x.device).float().unsqueeze(0)
-        mask = self.population.mask(x=positions, mu=self.mu, sigma=self.sigma)
-        mask = mask / mask.max(dim=-1, keepdim=True).values
-
-        dists = ((x - mask) ** 2).sum(dim=-1)
-
-        a = torch.exp(-0.5 * dists / (self.sigma ** 2)) 
+        mask = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.dist)
         
-        a = x + (mask - z_norm)
-        #print(a)
-        return a
+        diff = (x - mask) ** 2
+        norm = torch.sum(x ** 2, dim=-1, keepdim=True) + torch.sum(mask ** 2, dim=-1, keepdim=True)
+        norm = norm.std(dim=-2, keepdim=True)
+
+        a = diff / (norm + self.eps)
+        a_norm = a / a.max(dim=-1, keepdim=True).values
+        
+        return a_norm

@@ -1,27 +1,60 @@
+import sys
 import torch
-import torch.linalg as L
 import torch.nn as nn
-import torch.nn.functional as F
+from enum import Enum
 
-from populations import MexicanHat
+from populations import Distribution, SineWave
+
+
+class Norm(Enum):
+    NONE = 0,
+    INPUT = 1,
+    OUTPUT = 2
 
 class MaskedPopulation(nn.Module):
-    def __init__(self, alpha=100.0, sigma=32.0):
+    def __init__(self, freq=16.0, phase=0.0, amp=1.0, norm=Norm.INPUT, dist=Distribution.ZERO_MEAN, grad_phase=False, grad_amp=False, scale_mask=False):
         super().__init__()
-        self.alpha = alpha
-        self.sigma = sigma
-        self.population = MexicanHat()
+        self.freq = nn.Parameter(torch.tensor(freq), requires_grad=False)
+        self.phase = nn.Parameter(torch.tensor(phase), requires_grad=grad_phase)
+        self.amp = nn.Parameter(torch.tensor(amp), requires_grad=grad_amp)
+        self.population = SineWave()
+        self.norm = norm
+        self.mask = dist
+        self.scale_mask = scale_mask
 
     def forward(self, x):
-        p = F.softmax(self.alpha * x, dim=1)
+        x_size = x.size(dim=1)
+        x_pos = torch.arange(x_size, device=x.device)
+        
+        mask = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.mask)
+        print(mask.shape)
 
-        positions = torch.arange(x.size(dim=1), device=x.device).float().unsqueeze(0)
-        mu = torch.sum(p * positions, dim=1, keepdim=True)
-       
-        mask = self.population.mask(x=positions, mu=mu, sigma=self.sigma)
-        mask = mask / mask.max(dim=-1, keepdim=True).values
+        if self.scale_mask:
+            mask = mask / x.max(dim=-1, keepdim=True).values
         
-        a_norm = x / x.max(dim=-1, keepdim=True).values       
-        masked_a = x + (mask - a_norm)
-        
-        return masked_a
+        match self.norm:
+            case Norm.NONE:
+                return self._forward(x, mask)
+            case Norm.INPUT:
+                return self._forward_norm_input(x, mask)
+            case Norm.OUTPUT:
+                return self._forward_norm_output(x, mask)       
+
+    def _forward(self, x, mask):
+        output = x + mask   
+        print(output.shape)   
+        return output
+    
+    def _forward_norm_input(self, x, mask):
+        x_norm = x / x.max(dim=-1, keepdim=True).values
+        print(x_norm.shape)
+        output = x + (mask - x_norm)
+        print(output.shape)      
+        return output
+    
+    def _forward_norm_output(self, x, mask):
+        output = x + mask
+        print(output.shape)
+        output = output / output.max(dim=-1, keepdim=True).values 
+        print(output.shape)       
+        return 0

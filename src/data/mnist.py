@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import torch
 from torchvision import datasets
 from torchvision.transforms import ToTensor
