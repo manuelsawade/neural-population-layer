@@ -34,6 +34,29 @@ masked_stack = nn.Sequential(
     nn.ReLU(),  
     nn.Linear(hidden_dim, output_dim))
 
+deep_masked_stack = nn.Sequential(
+    nn.Linear(input_dim, hidden_dim),
+    MaskedPopulation(
+        freq=16.0, 
+        amp=1.0, 
+        norm=Norm.OUTPUT, 
+        dist=Distribution.ZERO_MEAN,
+        grad_phase=True,
+        grad_amp=True,
+        scale_mask=False),
+    nn.ReLU(),  
+    nn.Linear(hidden_dim, hidden_dim),
+    MaskedPopulation(
+        freq=16.0, 
+        amp=1.0, 
+        norm=Norm.OUTPUT, 
+        dist=Distribution.ZERO_MEAN,
+        grad_phase=True,
+        grad_amp=True,
+        scale_mask=False),
+    nn.ReLU(),  
+    nn.Linear(hidden_dim, output_dim))
+
 fixed_stack = nn.Sequential(
     nn.Linear(input_dim, hidden_dim),
     FixedPopulation(
@@ -59,7 +82,7 @@ deep_fixed_stack = nn.Sequential(
         dist=Distribution.ZERO_BASE,),
     nn.Linear(hidden_dim, output_dim))
 
-for stack in [linear_stack]:    
+for stack in [deep_masked_stack]:    
     trainer = Trainer(
         model=NeuralNetwork(layers=stack),
         data_set=MNIST(),
