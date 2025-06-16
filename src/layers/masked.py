@@ -27,7 +27,6 @@ class MaskedPopulation(nn.Module):
         x_pos = torch.arange(x_size, device=x.device)
         
         mask = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.mask)
-        print(mask.shape)
 
         if self.scale_mask:
             mask = mask / x.max(dim=-1, keepdim=True).values
@@ -41,20 +40,15 @@ class MaskedPopulation(nn.Module):
                 return self._forward_norm_output(x, mask)       
 
     def _forward(self, x, mask):
-        output = x + mask   
-        print(output.shape)   
+        output = x + mask    
         return output
     
     def _forward_norm_input(self, x, mask):
         x_norm = x / x.max(dim=-1, keepdim=True).values
-        print(x_norm.shape)
-        output = x + (mask - x_norm)
-        print(output.shape)      
+        output = x + (mask - x_norm)   
         return output
     
     def _forward_norm_output(self, x, mask):
         output = x + mask
-        print(output.shape)
-        output = output / output.max(dim=-1, keepdim=True).values 
-        print(output.shape)       
-        return 0
+        output = output / output.max(dim=-1, keepdim=True).values        
+        return output

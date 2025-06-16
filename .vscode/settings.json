@@ -1,86 +1,168 @@
 {
-    "files.exclude": {
-      "**/.dart_tool/**": true,
-      "**/.idea/**": true,
-      "**/.metadata": true,
-      "**/android/**": true,
-      "**/build/**": false,
-      "**/Cargo.lock/**": true,
-      "**/ios/**": true,
-      "**/linux/**": true,
-      "**/macos/**": true,
-      "**/pubspec.lock": true,
-      "**/web/**": false,
-      "**/sino_app/target/**": true,
-      "**/windows/**": false,
-      "**/**.iml": true
-    },
-    "cSpell.enableFiletypes": ["!dart", "!json", "!rust", "!yaml"],
-    "cSpell.words": ["jsonobject", "rxdart", "spaceinfo", "visr"],
-    "editor.tokenColorCustomizations": {
-      "variables": "#a4cfe0",
-      "types": "#f3a852",
-      "textMateRules": [
-        {
-          "scope": "keyword.operator",
-          "settings": {
-            "foreground": "#C678DD"
-          }
-        },
-        {
-          "scope": "entity.name.type.class",
-          "settings": {
-            "foreground": "#f3a852"
-          }
-        },
-        {
-          "scope": "variable:dart",
-          "settings": {
-            "foreground": "#a4cfe0"
-          }
-        },
-        {
-          "scope": "entity.name.namespace",
-          "settings": {
-            "foreground": "#e6d7bc"
-          }
-        },
-        {
-          "scope": "source.dart.property",
-          "settings": {
-            "foreground": "#FF0000"
-          }
-        },
-        {
-          "scope": "string",
-          "settings": {
-            "foreground": "#E6DB74"
-          }
-        },
-        {
-          "scope": "entity.name.type.enum.rust",
-          "settings": {
-            "foreground": "#A6E22E"
-          }
-        },
-        {
-          "scope": "keyword.operator.access.dot.rust",
-          "settings": {
-            "foreground": "#F92672"
-          }
+  "files.exclude": {
+    "**/.dart_tool/**": true,
+    "**/.idea/**": true,
+    "**/.metadata": true,
+    "**/android/**": true,
+    "**/build/**": false,
+    "**/Cargo.lock/**": true,
+    "**/ios/**": true,
+    "**/linux/**": true,
+    "**/macos/**": true,
+    "**/pubspec.lock": true,
+    "**/web/**": false,
+    "**/sino_app/target/**": true,
+    "**/windows/**": false,
+    "**/**.iml": true
+  },
+  "cSpell.enableFiletypes": [
+    "!dart",
+    "!json",
+    "!rust",
+    "!yaml"
+  ],
+  "cSpell.words": [
+    "jsonobject",
+    "rxdart",
+    "spaceinfo",
+    "visr"
+  ],
+  "editor.tokenColorCustomizations": {
+    "variables": "#a4cfe0",
+    "types": "#f3a852",
+    "textMateRules": [
+      {
+        "scope": "keyword.operator",
+        "settings": {
+          "foreground": "#C678DD"
         }
-      ]
-    },
-    "appService.zipIgnorePattern": ["node_modules{,/**}", ".vscode{,/**}"],
-    "appService.defaultWebAppToDeploy": "None",
-    "dart.flutterSdkPath": null,
-    "azureFunctions.deploySubpath": "src\\visr-link-dbq\\get-space-by-name",
-    "azureFunctions.projectLanguage": "Custom",
-    "azureFunctions.projectRuntime": "~4",
-    "debug.internalConsoleOptions": "neverOpen",
-    "azureFunctions.projectSubpath": "src\\visr_link_dbq\\get-space-by-name",
-    "[dart]": {
-      "editor.formatOnSave": true
-    }
+      },
+      {
+        "scope": "entity.name.type.class",
+        "settings": {
+          "foreground": "#f3a852"
+        }
+      },
+      {
+        "scope": "variable:dart",
+        "settings": {
+          "foreground": "#a4cfe0"
+        }
+      },
+      {
+        "scope": "entity.name.namespace",
+        "settings": {
+          "foreground": "#e6d7bc"
+        }
+      },
+      {
+        "scope": "source.dart.property",
+        "settings": {
+          "foreground": "#FF0000"
+        }
+      },
+      {
+        "scope": "string",
+        "settings": {
+          "foreground": "#E6DB74"
+        }
+      },
+      {
+        "scope": "entity.name.type.enum.rust",
+        "settings": {
+          "foreground": "#A6E22E"
+        }
+      },
+      {
+        "scope": "keyword.operator.access.dot.rust",
+        "settings": {
+          "foreground": "#F92672"
+        }
+      },
+      {
+        "scope": "variable.other.readwrite",
+        "settings": {
+          "foreground": "#A4CFE0",
+        }
+      },
+      {
+        "scope": "punctuation.separator.period.python",
+        "settings": {
+          "foreground": "#F92672",
+        }
+      },
+      {
+        "scope": "constant.numeric",
+        "settings": {
+          "foreground": "#C678DD",
+        }
+      },
+      {
+        "scope": "variable.parameter.function.language.special.self.python",
+        "settings": {
+          "foreground": "#C678DD",
+          "fontStyle": "italic"
+        }
+      },
+      {
+        "scope": "entity.name.type.enum",
+        "settings": {
+          "foreground": "#A6E22E",
+        }
+      },
+      {
+        "scope": "keyword.operator.arithmetic.python",
+        "settings": {
+          "foreground": "#F92672",
+        }
+      },
+      {
+        "scope": "variable.other.constant",
+        "settings": {
+          "foreground": "#C678DD",
+        }
+      },
+      {
+        "scope": "meta.class.python",
+        "settings": {
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "meta.function.python",
+        "settings": {
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "keyword.control.flow.python",
+        "settings": {
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "support.function.magic.python",
+        "settings": {
+          "foreground": "#F92672",
+        }
+      }
+    ]
+  },
+  "appService.zipIgnorePattern": [
+    "node_modules{,/**}",
+    ".vscode{,/**}"
+  ],
+  "appService.defaultWebAppToDeploy": "None",
+  "dart.flutterSdkPath": null,
+  "azureFunctions.deploySubpath": "src\\visr-link-dbq\\get-space-by-name",
+  "azureFunctions.projectLanguage": "Custom",
+  "azureFunctions.projectRuntime": "~4",
+  "debug.internalConsoleOptions": "neverOpen",
+  "azureFunctions.projectSubpath": "src\\visr_link_dbq\\get-space-by-name",
+  "[dart]": {
+    "editor.formatOnSave": true
+  },
+  "cSpell.enabledFileTypes": {
+    "pip-requirements": false
   }
-  
+}
