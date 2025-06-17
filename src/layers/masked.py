@@ -17,6 +17,7 @@ class MaskedPopulation(nn.Module):
         self.freq = nn.Parameter(torch.tensor(freq), requires_grad=False)
         self.phase = nn.Parameter(torch.tensor(phase), requires_grad=grad_phase)
         self.amp = nn.Parameter(torch.tensor(amp), requires_grad=grad_amp)
+        self.alpha = nn.Parameter(torch.tensor(0.2), requires_grad=False)
         self.population = SineWave()
         self.norm = norm
         self.mask = dist
@@ -27,7 +28,6 @@ class MaskedPopulation(nn.Module):
         x_pos = torch.arange(x_size, device=x.device)
         
         mask = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.mask)
-        print(mask.shape)
 
         if self.scale_mask:
             mask = mask / x.max(dim=-1, keepdim=True).values
@@ -41,20 +41,22 @@ class MaskedPopulation(nn.Module):
                 return self._forward_norm_output(x, mask)       
 
     def _forward(self, x, mask):
-        output = x + mask   
-        print(output.shape)   
+        output = x + mask    
         return output
     
     def _forward_norm_input(self, x, mask):
         x_norm = x / x.max(dim=-1, keepdim=True).values
-        print(x_norm.shape)
-        output = x + (mask - x_norm)
-        print(output.shape)      
+        output = x + (mask - x_norm)   
         return output
     
     def _forward_norm_output(self, x, mask):
-        output = x + mask
-        print(output.shape)
-        output = output / output.max(dim=-1, keepdim=True).values 
-        print(output.shape)       
-        return 0
+        #output = (1 - self.alpha) * x + self.alpha * mask
+        #output = x - 2 * self.alpha * (x - mask)
+        output = x + self.alpha * nn.functional.sigmoid((mask - x))
+
+        #sys.stdout.write(f'\r                                                       Alpha: {self.alpha.item():.4f}')
+        #sys.stdout.flush()
+        
+        #output = x + mask
+        #output = output / output.max(dim=-1, keepdim=True).values        
+        return output

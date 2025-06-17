@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 import sys
 import torch
 import torch.nn as nn
@@ -6,12 +7,14 @@ from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 
 class Trainer:
-    def __init__(self, model, training_data, test_data, batch_size=64, learning_rate=0.001):
+    def __init__(self, model, data_set, batch_size=64, learning_rate=0.001, training_noise=0.2):
+        training_data, test_data = data_set(training_noise=training_noise)
+
         self.model = model
         self.optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         self.loss_fn = nn.CrossEntropyLoss()
         self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-        self.test_loader = DataLoader(test_data, batch_size=batch_size)
+        self.test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,7 +55,7 @@ class Trainer:
                     activations[name]['std'] = []
                     activations[name]['len'] = []
                 
-                activations[name]['out'].append(output.detach().flatten(start_dim=1).tolist())
+                activations[name]['out'].extend(output.detach().tolist())
                 activations[name]['mean'] += output.detach().mean()
                 activations[name]['std'].append(output.detach().std())
                 activations[name]['len'].append(len(output.detach()))
@@ -75,8 +78,6 @@ class Trainer:
                 for name, param in self.model.named_parameters():
                     if param.requires_grad == False: continue
 
-                    if 'phase' in name: continue
-
                     original = param.data.clone()
                     
                     param_noise = noise * torch.randn_like(param)
@@ -91,8 +92,6 @@ class Trainer:
 
                     param.data = original
         
-
-
         test_loss /= num_batches
         correct /= size
 
@@ -112,18 +111,14 @@ class Trainer:
         for param in sharpness_scores:
             print(f"  {param}: {sum(sharpness_scores[param]) / len(sharpness_scores[param]):>4f}")
 
-        fig, axs = plt.subplots(len(activations), figsize=(12, 10))
+        fig, axs = plt.subplots(len(activations), figsize=(12, 10), sharey=True)
 
         for index, layer in enumerate(activations):
             axs[index].set_title(f'{index}: {activations[layer]['type']}')
             axs[index].set_xlabel('Neuron')
-            axs[index].set_ylabel('Layer')
+            axs[index].set_ylabel('Layer')            
 
-            flat_out = []
-            for batch in activations[layer]['out']:
-                flat_out.append(batch[:self.batch_size][0])
-
-            im = axs[index].imshow(flat_out[:20], cmap='inferno', interpolation='nearest')
+            im = axs[index].imshow(activations[layer]['out'][:20], cmap='inferno', interpolation='nearest')
 
             fig.colorbar(im, ax=axs[index])
 
