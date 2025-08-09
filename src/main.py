@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from data.lc25000 import LC25000, LC25000Dataset
 from layers.fixed import FixedPopulation, GlobalNorm
 from layers.masked import Norm, MaskedPopulation
 from networks import NeuralNetwork
@@ -8,11 +9,11 @@ from populations import Distribution
 from trainer import Trainer
 from data.mnist import MNIST
 
-training_noise = 1.0
+training_noise = 0.0
 
-input_dim = 28 * 28
-hidden_dim = 128
-output_dim = 10
+input_dim = 200 * 200
+hidden_dim = 1000
+output_dim = 5
 
 torch.manual_seed(100)
 
@@ -82,13 +83,13 @@ deep_fixed_stack = nn.Sequential(
         dist=Distribution.ZERO_BASE,),
     nn.Linear(hidden_dim, output_dim))
 
-for stack in [deep_masked_stack]:    
+for stack in [linear_stack]:    
     trainer = Trainer(
         model=NeuralNetwork(layers=stack),
-        data_set=MNIST(),
+        data_set=LC25000(size=input_dim),
         training_noise=training_noise,
-        batch_size=32,
-        learning_rate=0.0005,
+        batch_size=256,
+        learning_rate=0.0001,
     )
 
     output = {}
@@ -96,7 +97,7 @@ for stack in [deep_masked_stack]:
     # output['Frequency'] = 16.0
     # output['Amplitude'] = 4
 
-    trainer.train(epochs=20)
+    trainer.train(epochs=10)
     trainer.test(noise=0.2, summary=output)
 
 # torch.Size([128])

@@ -1,6 +1,7 @@
 from datetime import datetime
 import random
 import sys
+import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader 
@@ -21,9 +22,12 @@ class Trainer:
 
     def train(self, epochs):
         self.model.to(self.device)
-        
+
         for epoch in range(epochs):
+            start = time.time()
             self.model.train()
+
+            count = 1
             for x, y in self.train_loader:
                 pred = self.model(x)
                 loss = self.loss_fn(pred, y)
@@ -33,9 +37,14 @@ class Trainer:
                 for param in self.model.parameters():
                     param.grad = None
 
-            sys.stdout.write(f'\rEpoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
-            sys.stdout.flush()
-            
+                sys.stdout.write(f'\rEpoch [{epoch+1}/{epochs}], Batch [{count * self.batch_size}]')
+                sys.stdout.flush()
+                count += 1
+
+            end = time.time()
+
+            sys.stdout.write(f'\rEpoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}, Elapsed Time: {end - start:.2f}s')
+            sys.stdout.write('\n')
 
     def test(self, noise=0.01, summary={}):
         self.model.eval()
