@@ -4,6 +4,7 @@ import torch.nn as nn
 from data.lc25000 import LC25000, LC25000Dataset
 from layers.fixed import FixedPopulation, GlobalNorm
 from layers.masked import Norm, MaskedPopulation
+from layers.population import PopulationEncoding, PopulationDecoding
 from networks import NeuralNetwork
 from populations import Distribution
 from trainer import Trainer
@@ -11,9 +12,9 @@ from data.mnist import MNIST
 
 training_noise = 0.0
 
-input_dim = 200 * 200
-hidden_dim = 1000
-output_dim = 5
+input_dim = 28 * 28
+hidden_dim = 100
+output_dim = 10
 
 torch.manual_seed(100)
 
@@ -83,13 +84,18 @@ deep_fixed_stack = nn.Sequential(
         dist=Distribution.ZERO_BASE,),
     nn.Linear(hidden_dim, output_dim))
 
-for stack in [linear_stack]:    
+population_stack = nn.Sequential(
+    PopulationEncoding(),
+    nn.Linear(input_dim * 10, output_dim),
+    PopulationDecoding())
+
+for stack in [population_stack]:    
     trainer = Trainer(
         model=NeuralNetwork(layers=stack),
-        data_set=LC25000(size=input_dim),
+        data_set=MNIST(),
         training_noise=training_noise,
         batch_size=256,
-        learning_rate=0.0001,
+        learning_rate=0.005,
     )
 
     output = {}
