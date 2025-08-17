@@ -11,7 +11,7 @@ class GlobalNorm(Enum):
     MEAN = 1,
     SDT = 2
 
-class FixedPopulation(nn.Module):
+class SineLayerPopulationActivation(nn.Module):
     def __init__(self, freq=16.0, phase=0.0, amp=1.0, dist=Distribution.ZERO_MEAN, norm=GlobalNorm.NONE, grad_phase=False, grad_amp=False):
         super().__init__()
         self.freq = nn.Parameter(torch.tensor(freq))

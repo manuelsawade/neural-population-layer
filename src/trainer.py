@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader 
 from matplotlib import pyplot as plt
+from torch import Tensor
 
 class Trainer:
     def __init__(self, model, data_set, batch_size=64, learning_rate=0.001, training_noise=0.2):
@@ -28,22 +29,28 @@ class Trainer:
             self.model.train()
 
             count = 1
+            correct, total = 0, 0
             for x, y in self.train_loader:
-                pred = self.model(x)
-                loss = self.loss_fn(pred, y)
+                pred: Tensor = self.model(x)
 
+                correct += (pred.argmax(dim=1) == y).sum().item()
+                total += y.size(0)
+
+                loss: Tensor = self.loss_fn(pred, y)
                 loss.backward()
+
                 self.optimizer.step()
                 for param in self.model.parameters():
                     param.grad = None
 
-                sys.stdout.write(f'\rEpoch [{epoch+1}/{epochs}], Batch [{count * self.batch_size}]')
+                sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Batch [{count * self.batch_size}]')
                 sys.stdout.flush()
                 count += 1
 
             end = time.time()
+            acc = correct / total
 
-            sys.stdout.write(f'\rEpoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}, Elapsed Time: {end - start:.2f}s')
+            sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss.item():.4f}, Acc: {acc*100:.2f}, Elapsed Time: {end - start:.2f}s')
             sys.stdout.write('\n')
 
     def test(self, noise=0.01, summary={}):
@@ -120,7 +127,7 @@ class Trainer:
         for param in sharpness_scores:
             print(f"  {param}: {sum(sharpness_scores[param]) / len(sharpness_scores[param]):>4f}")
 
-        fig, axs = plt.subplots(len(activations), figsize=(12, 10), sharey=True)
+        fig, axs = plt.subplots(len(activations), figsize=(40, 10), sharey=True)
 
         for index, layer in enumerate(activations):
             axs[index].set_title(f'{index}: {activations[layer]['type']}')

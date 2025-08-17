@@ -18,7 +18,7 @@ class DynamicPopulation(nn.Module):
         positions = torch.arange(x.size(dim=1), device=x.device).float().unsqueeze(0)
         mu = torch.sum(p * positions, dim=1, keepdim=True)
        
-        mask = self.population.mask(x=positions, mu=mu, sigma=self.sigma)
+        mask = self.population.activate(x=positions, mu=mu, sigma=self.sigma)
         mask = mask / mask.max(dim=-1, keepdim=True).values
         
         a_norm = x / x.max(dim=-1, keepdim=True).values       

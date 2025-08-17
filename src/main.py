@@ -1,16 +1,16 @@
 import torch
 import torch.nn as nn
 
+from activations.masked import MaskedPopulation, Norm
+from activations.neuron import NeuronPopulation, OutNorm, PreferredStimulus
+from activations.sine_layer import SineLayerPopulationActivation
 from data.lc25000 import LC25000, LC25000Dataset
-from layers.fixed import FixedPopulation, GlobalNorm
-from layers.masked import Norm, MaskedPopulation
-from layers.population import PopulationEncoding, PopulationDecoding
 from networks import NeuralNetwork
-from populations import Distribution
+from populations import Distribution, Gaussian, LogNormal, MexicanHat, TuningCurve
 from trainer import Trainer
 from data.mnist import MNIST
 
-training_noise = 0.0
+training_noise = 1.0
 
 input_dim = 28 * 28
 hidden_dim = 100
@@ -20,8 +20,6 @@ torch.manual_seed(100)
 
 linear_stack = nn.Sequential(
     nn.Linear(input_dim, hidden_dim),
-    nn.ReLU(), 
-    nn.Linear(hidden_dim, hidden_dim),
     nn.ReLU(), 
     nn.Linear(hidden_dim, output_dim))
 
@@ -61,7 +59,7 @@ deep_masked_stack = nn.Sequential(
 
 fixed_stack = nn.Sequential(
     nn.Linear(input_dim, hidden_dim),
-    FixedPopulation(
+    SineLayerPopulationActivation(
         freq=8.0, 
         amp=1.0,
         dist=Distribution.ZERO_BASE,),
@@ -69,14 +67,14 @@ fixed_stack = nn.Sequential(
 
 deep_fixed_stack = nn.Sequential(
     nn.Linear(input_dim, hidden_dim),
-    FixedPopulation(
+    SineLayerPopulationActivation(
         freq=16.0, 
         amp=1.0,
         grad_phase=True,
         grad_amp=True,
         dist=Distribution.ZERO_BASE,),
     nn.Linear(hidden_dim, hidden_dim),
-    FixedPopulation(
+    SineLayerPopulationActivation(
         freq=16.0, 
         amp=1.0,
         grad_phase=True,
@@ -84,18 +82,62 @@ deep_fixed_stack = nn.Sequential(
         dist=Distribution.ZERO_BASE,),
     nn.Linear(hidden_dim, output_dim))
 
-population_stack = nn.Sequential(
-    PopulationEncoding(),
-    nn.Linear(input_dim * 10, output_dim),
-    PopulationDecoding())
+mexican_hat_stack = nn.Sequential(
+    nn.Linear(input_dim, 200),
+    NeuronPopulation(
+        200, 
+        sigma=0.15,
+        neurons=6,
+        orientation=(-2, 1),
+        activation=MexicanHat(),
+        stimulus=PreferredStimulus.LINEAR),
+    nn.LazyLinear(output_dim),    
+    )
 
-for stack in [population_stack]:    
+hidden_dim = 200
+
+pop_stack = nn.Sequential(
+    NeuronPopulation(
+        input_dim, 
+        sigma=1.5,
+        neurons=6,
+        orientation=(0, 1),
+        activation=TuningCurve(),
+        stimulus=PreferredStimulus.COSINE),
+    nn.LazyLinear(output_dim),    
+    )
+
+tuning_curve_stack = nn.Sequential(
+    nn.Linear(input_dim, hidden_dim),
+    NeuronPopulation(
+        hidden_dim, 
+        sigma=1.5,
+        neurons=6,
+        orientation=(0, 1),
+        activation=TuningCurve(),
+        stimulus=PreferredStimulus.COSINE),
+    nn.LazyLinear(output_dim),    
+    )
+
+log_normal_stack = nn.Sequential(
+    nn.Linear(input_dim, hidden_dim),
+    NeuronPopulation(
+        hidden_dim, 
+        sigma=0.75,
+        neurons=8,
+        orientation=(0, 1),
+        activation=LogNormal(),
+        stimulus=PreferredStimulus.LINEAR),
+    nn.LazyLinear(output_dim),    
+    )
+
+for stack in [pop_stack]:    
     trainer = Trainer(
         model=NeuralNetwork(layers=stack),
         data_set=MNIST(),
         training_noise=training_noise,
-        batch_size=256,
-        learning_rate=0.005,
+        batch_size=32,
+        learning_rate=0.0001,
     )
 
     output = {}
@@ -103,7 +145,7 @@ for stack in [population_stack]:
     # output['Frequency'] = 16.0
     # output['Amplitude'] = 4
 
-    trainer.train(epochs=10)
+    trainer.train(epochs=20)
     trainer.test(noise=0.2, summary=output)
 
 # torch.Size([128])

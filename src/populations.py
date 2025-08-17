@@ -2,12 +2,23 @@ from enum import Enum
 import torch
 
 class Gaussian:
-    def mask(self, x, mu, sigma):
+    def __call__(self, x, mu, sigma):
         return torch.exp(-0.5 * ((x - mu) / sigma) ** 2) / (2 * sigma ** 2)
     
+class TuningCurve:
+    def __call__(self, x, mu, sigma):
+        return torch.exp(-0.5 * ((x - mu) / sigma) ** 2)
+    
 class MexicanHat:
-    def mask(self, x, mu, sigma):
+    def __call__(self, x, mu, sigma):
         return (1 - ((x - mu) / sigma) ** 2) * torch.exp(-0.5 * ((x - mu) / sigma) ** 2)
+    
+class LogNormal:
+    def __call__(self, x, mu, sigma):
+        x = torch.clamp(x, min=1e-10)
+        coeff = 1.0 / (x * sigma * torch.sqrt(torch.tensor(2.0 * torch.pi)))
+        exponent = -((torch.log(x) - mu) ** 2) / (2 * sigma**2)
+        return coeff * torch.exp(exponent)
 
 class Distribution(Enum):
     ZERO_MEAN = 0,

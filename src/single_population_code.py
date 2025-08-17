@@ -3,10 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 N = 10
-SIGMA = 1.5
+SIGMA = 0.5
 PREFERRED_VALS = torch.arange(N, dtype=torch.float32)
 
 SELECTED_INDEX = 3
+
+print(torch.normal(
+                    mean=0, 
+                    std=1, 
+                    size=(2, 12)))
 
 def population_encode(digit, preferred_vals=PREFERRED_VALS, sigma=SIGMA):
     activations = torch.exp(-0.5 * ((digit - preferred_vals) / sigma) ** 2)
