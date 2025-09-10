@@ -7,9 +7,12 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 from PIL import Image
 
-from data.noise import AddGaussianNoise
+from datasets.noise import AddGaussianNoise
 
 class LC25000():
+    input_dim = 32 * 32
+    output_dim = 5
+    
     def __init__(self, size=768*768):
         self.size = size
 

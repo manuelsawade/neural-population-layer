@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-from data.mnist import MNIST
+from datasets.mnist import MNIST
 
 torch.manual_seed(0)
 np.random.seed(0)

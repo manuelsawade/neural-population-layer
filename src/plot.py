@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from matplotlib import pyplot as plt
-from data.mnist import MNIST
+from datasets.mnist import MNIST
 from scipy.interpolate import make_interp_spline
 
 def sine_base(freq, phase, amp, x_pos, x_size):

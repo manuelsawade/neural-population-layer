@@ -5,7 +5,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 
-from data.mnist import MNIST
+from datasets.mnist import MNIST
 
 SEED = 100
 torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)

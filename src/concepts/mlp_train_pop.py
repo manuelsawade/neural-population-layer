@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 import torch.nn.functional as F
 
-from data.mnist import MNIST
+from datasets.mnist import MNIST
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
