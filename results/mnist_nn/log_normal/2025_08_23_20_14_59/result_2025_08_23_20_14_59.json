@@ -1,0 +1,19 @@
+{
+    "training_noise": 1.0,
+    "seed": 8429762,
+    "stack": "log_normal",
+    "network": "nn",
+    "epochs": 20,
+    "accuracy": 84.48,
+    "avg_loss": 0.5522513717127303,
+    "batch_size": 32,
+    "dataset": "mnist",
+    "test_noise": 0.2,
+    "sharpness_scores": {
+        "layers.0.weight": 1.897871350708861,
+        "layers.0.bias": 0.046091425295074144,
+        "layers.2.weight": 0.21902193609898846,
+        "layers.2.bias": 0.007295910637980452
+    },
+    "activation_scores": {}
+}
