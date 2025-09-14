@@ -57,22 +57,22 @@ for training_noise in noise_classes:
                             
                             population_training = NeuronPopulationTraining(
                                 hyper_parameter=NeuronPopulationParameter(
-                                dataset=MNIST(),
-                                hidden_dim=hidden_dim,
-                                training_noise=training_noise,
-                                test_noise=0.2,
-                                batch_size=batch_size,
-                                learning_rate=0.00002,
-                                weight_decay=0.0001,
-                                epochs=epochs,
-                                created_on=date_time,
-                                sigma=sigma,
-                                orientation=orientation,
-                                stimulus=stimulus,
-                                neurons=neurons,
-                                seed=seed,
-                                subset=subset,
-                                activation=TuningCurve(readout=WeightedAverageDecoder())
+                                    dataset=MNIST(),
+                                    hidden_dim=hidden_dim,
+                                    training_noise=training_noise,
+                                    test_noise=0.2,
+                                    batch_size=batch_size,
+                                    learning_rate=0.00002,
+                                    weight_decay=0.0001,
+                                    epochs=epochs,
+                                    created_on=date_time,
+                                    sigma=sigma,
+                                    orientation=orientation,
+                                    stimulus=stimulus,
+                                    neurons=neurons,
+                                    seed=seed,
+                                    subset=subset,
+                                    activation=TuningCurve(readout=WeightedAverageDecoder())
                                 )
                             )
 

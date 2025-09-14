@@ -20,7 +20,6 @@ class PopulationBase(nn.Module):
     def activation(self, x: Tensor, mu: Tensor, sigma: Tensor) -> Tensor:
         pass
 
-@dataclass
 class CircularPopulationBase(nn.Module):
     name: str = ""
 

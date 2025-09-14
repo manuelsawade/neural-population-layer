@@ -51,11 +51,8 @@ class NeuronPopulation(nn.Module):
         mu = self.mu.unsqueeze(0) 
         sigma = torch.exp(self.log_sigma).unsqueeze(0)
         
-        if (isinstance(self.activation, CircularPopulationBase)):
-            encoded, decoded = self.activation(x_expanded, mu, sigma, self.orientation)
-        else:
-            encoded, decoded = self.activation(x_expanded, mu, sigma, self.orientation)       
-
+        encoded, decoded = self.activation(x_expanded, mu, sigma, self.orientation)
+            
         self.pop_out = encoded.view(x.size(0), self.input_dim * self.neurons).detach()
         return decoded
 
