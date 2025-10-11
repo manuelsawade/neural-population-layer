@@ -24,6 +24,10 @@ class PopulationBase(nn.Module):
 class CircularPopulationBase(nn.Module):
     name: str = ""
 
+    def __init__(self, readout):
+        super().__init__()
+        self.readout = readout
+
     def forward(self, x: Tensor, mu: Tensor, sigma: Tensor, orientation: tuple[float, float]) -> tuple[Tensor, Tensor]:
         activation = self.activation(x, mu, sigma, orientation)
         return (activation, self.readout(activation))
