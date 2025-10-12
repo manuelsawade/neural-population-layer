@@ -32,7 +32,7 @@ class CircularMeanDecoder(DecoderBase):
         C = torch.sum(out * torch.cos(theta), dim=-1) 
         S = torch.sum(out * torch.sin(theta), dim=-1) 
 
-        theta_hat = torch.atan2(S, C) % (2 * torch.pi)
+        theta_hat = torch.atan2(S, C)
 
         decoded = orientation[0] + (L / (2 * torch.pi)) * theta_hat
         return decoded

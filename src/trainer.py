@@ -65,6 +65,8 @@ class Trainer:
         self.flatten = nn.Flatten()
 
     def train(self, epochs):
+
+        
         self.epochs = epochs
         self.model.to(self.device)
 
