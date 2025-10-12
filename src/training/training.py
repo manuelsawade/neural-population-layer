@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 import os
+from pathlib import Path
 import random
 from typing import Any, Callable, Generic, Iterator, TypeVar
 import torch
@@ -27,6 +28,8 @@ class HyperParameter:
     created_on: datetime
     seed: int
     subset: int | None
+    index: int
+    identifier: str
 
     def toDict(self):
         return {
@@ -44,14 +47,13 @@ class HyperParameter:
         }
 
     def get_output_folder(self, base: str = './experiments'):
-        return f'{base}/{self.dataset.name}_{self._dateToString(self.created_on)}/'
-    
-    def get_output_file(self):
-        date_time = self._dateToString(datetime.now())
-        return f'hd{self.hidden_dim}_tn{str(self.training_noise).replace(".", "")}_{date_time}'
+        return f'{base}/{self.identifier}/'
     
     def _dateToString(self, datetime: datetime) -> str:
         return datetime.strftime("%Y_%m_%d_%H_%M_%S")
+    
+    def get_output_file(self):
+        return "_".join([self.dataset.name, str(self.hidden_dim), str(self.training_noise), str(self.test_noise), str(self.batch_size), str(self.learning_rate), str(self.weight_decay), str(self.epochs), "none" if self.subset is None else str(self.subset), str(self.index), self.identifier]).replace(" ", "").replace(",", "_").replace(".", "_")
 
 @dataclass
 class NeuronPopulationParameter(HyperParameter):
@@ -70,6 +72,9 @@ class NeuronPopulationParameter(HyperParameter):
         dict["stimulus"] = self.stimulus.name
 
         return dict
+    
+    def get_output_file(self):
+        return "_".join([super().get_output_file(), str(self.sigma), str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus)]).replace(" ", "").replace(",", "_").replace(".", "_")
         
 
 @dataclass
@@ -82,6 +87,14 @@ class TrainingBase:
         cls.output['network'] = cls.network
 
     def run_stack(self, stack: nn.Sequential):           
+        folder_path = self.hyper_parameter.get_output_folder()
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        file_path = f'{folder_path}/{self.hyper_parameter.get_output_file()}.json'
+        if Path(file_path).exists():
+            return
+                
         trainer = Trainer(
             model=NeuralNetwork(layers=stack),
             dataset=self.hyper_parameter.dataset,
@@ -97,12 +110,7 @@ class TrainingBase:
 
         self.output['hyper_parameter'] = self.hyper_parameter.toDict()
 
-        folder_path = self.hyper_parameter.get_output_folder()
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        file_name = self.hyper_parameter.get_output_file()
-        with open(f'{folder_path}/{file_name}.json', mode='w', newline='') as file:
+        with open(file_path, mode='w', newline='') as file:
             file.write(json.dumps(self.output, indent=4))
 
 class NeuronPopulationTraining(TrainingBase):
@@ -135,29 +143,7 @@ class LinearNetworkTraining(TrainingBase):
 
         self.run_stack(stack)      
 
-Parameter = TypeVar("Parameter")
 
-# @dataclass
-# class GridRunner(Generic[Parameter]):
-#     hyper_parameter: Parameter
-#     search_grid: list[Callable[[Parameter, Callable[[Callable[[Parameter]], object], Callable[[]]]]]]
-
-#     def setter(set, values) -> list[Callable[[]]]:
-#         funcs = []
-        
-#         for value in values:
-#             def func(parameter):
-#                 parameter = value
-
-#             funcs.append(func)
-#         return funcs
-
-#     def run(self) -> Iterator[Parameter]:
-#         for search in self.search_grid:
-#             for parameter_setter in search(self.hyper_parameter):
-#                 parameter_setter()
-
-#                 yield self.hyper_parameter
 
 
 
