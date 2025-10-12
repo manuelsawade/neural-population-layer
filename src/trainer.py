@@ -1,39 +1,17 @@
 from collections import OrderedDict
 from datetime import datetime
-import random
 import sys
 import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
-from matplotlib import pyplot as plt
 from torch import Tensor
 import os
-import csv
-import json
 
-#from metrics.autoattack import autoattack_metric
 from metrics.activations import activation_metric
-from metrics.autoattack import autoattack_metric
 from metrics.noise_sensitivity import noise_sensitivity_metric
 from metrics.roby import roby_metric
-from metrics.sam import SAM, sam_loss
 from metrics.sharpness import sharpness_metric
-from networks import NeuralPopNetwork
-from robustness import robust_accuracy_autoattack_like
-
-def target_population_code(y, N=30, sigma=1.5):
-    y = y.float().unsqueeze(1)
-    preferred_out = torch.linspace(0, 9, N)
-    mus = preferred_out.unsqueeze(0)
-    return torch.exp(-0.5 * ((y - mus) / sigma) ** 2)
-
-def pop_decode_to_digit(pop_acts, N=30):
-    preferred_out = torch.linspace(0, 9, N)
-    denom = pop_acts.sum(dim=1, keepdim=True) + 1e-8
-    cont = (pop_acts * preferred_out.unsqueeze(0)).sum(dim=1, keepdim=False) / denom.squeeze(1)
-    rounded = cont.round().clamp(0,9).long()
-    return cont, rounded
 
 class Trainer:
     def __init__(self, 
@@ -78,21 +56,12 @@ class Trainer:
 
             count = 1
             correct, total = 0, 0
-            for x, y in self.train_loader:
-                if isinstance(self.model, NeuralPopNetwork):
-                    out_pop = self.model(x)
-                    pred_pop = target_population_code(y)
-                    loss = self.loss_fn(out_pop, pred_pop)
+            for x, y in self.train_loader:                
+                pred: Tensor = self.model(x)
 
-                    cont, r = pop_decode_to_digit(out_pop)
-                    correct += (r == y).float().mean().item()
-                else:
-                    pred: Tensor = self.model(x)
+                correct += (pred.argmax(dim=1) == y).sum().item()
 
-                    correct += (pred.argmax(dim=1) == y).sum().item()
-
-                    loss: Tensor = self.loss_fn(pred, y)
-
+                loss: Tensor = self.loss_fn(pred, y)
                 loss.backward()
 
                 self.optimizer.step()
