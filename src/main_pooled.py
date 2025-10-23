@@ -15,25 +15,26 @@ from training.training import NeuronPopulationParameter, NeuronPopulationTrainin
 
 date_time = datetime.now()
 
-identifier = "mnist_test"
+identifier = "mnist_cifar10_v1_0"
 
 parameter = {
     "dataset": [MNIST(), CIFAR10()],
-    "runs": [100],
-    "epochs": [10],
+    "runs": [20],
+    "epochs": [100],
     "noise": [0.0, 0.5],
     "hidden_dim": [200],
     "batch_size": [32],
     "neurons": [4, 8, 12],
     "sigma": [0.4, 0.8, 1.2],
-    "orientation": [(-1, 1), (-2, 2), (-3, 3), (-4, 4)],
-    "stimulus": [PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM, PreferredStimulus.RAND_NORMAL],
-    "learning_rate": [0.0001, 0.00001],
-    "weight_decay": [0.001],
-    "activation": [TuningCurve(readout=WeightedAverageDecoder()), CircularTuningCurve(readout=CircularMeanDecoder())],
+    "orientation": [(-1, 1), (-2.5, 2.5), (-4, 4)],
+    "stimulus": [PreferredStimulus.LINEAR, PreferredStimulus.RAND_NORMAL],
+    "learning_rate": [0.00001],
+    "weight_decay": [0.0001],
+    "activation": [TuningCurve(readout=WeightedAverageDecoder())]#, CircularTuningCurve(readout=CircularMeanDecoder())],
 }
 
 all_parameter = list(itertools.product(*parameter.values()))
+print(f"max runs: {len(all_parameter) * parameter["runs"][0]}")
 
 def run(params: tuple):
     dataset, runs, epochs, noise, hidden_dim, batch_size, neurons, sigma, orientation, stimulus, learning_rate, weight_decay, activation = params
@@ -65,5 +66,5 @@ def run(params: tuple):
         population_training.run()
 
 if __name__ == '__main__':
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    with ProcessPoolExecutor(max_workers=4) as executor:
         list(executor.map(run, all_parameter))

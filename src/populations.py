@@ -29,7 +29,7 @@ class CircularPopulationBase(nn.Module):
 
     def forward(self, x: Tensor, mu: Tensor, sigma: Tensor, orientation: tuple[float, float]) -> tuple[Tensor, Tensor]:
         activation = self.activation(x, mu, sigma, orientation)
-        return (activation, self.readout(activation))
+        return (activation, self.readout(activation, mu, orientation))
 
     def activation(self, x: Tensor, mu: Tensor, sigma: Tensor, orientation: tuple[float, float]) -> Tensor:
         pass
