@@ -17,7 +17,7 @@ from datasets.mnist import MNIST
 
 @dataclass
 class HyperParameter:
-    dataset: Dataset
+    dataset: Dataset | None
     hidden_dim: int
     training_noise: float
     test_noise: float
@@ -130,7 +130,8 @@ class NeuronPopulationTraining(TrainingBase):
             nn.LazyLinear(self.hyper_parameter.dataset.output_dim),     
             )
 
-        self.run_stack(stack)    
+        self.run_stack(stack) 
+
 
 class LinearNetworkTraining(TrainingBase):
     network = "linear"

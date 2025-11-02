@@ -7,16 +7,24 @@ import ssl
 
 from datasets.noise import AddGaussianNoise
 
+
 class CIFAR10():    
     input_dim = 32 * 32 * 3
     output_dim = 10
     name = "cifar10"
 
     def __call__(self, training_noise=0.0):
+        def clamp_transform(tensor):
+            return torch.clamp(tensor, 0.0, 1.0)
+        
+        def add_noise(tensor):
+            noise = torch.randn_like(tensor) * self.std + self.mean
+            return tensor + noise
+        
         transform_with_noise = transforms.Compose([
             transforms.ToTensor(),
-            AddGaussianNoise(0.0, training_noise),
-            transforms.Lambda(lambda x: torch.clamp(x, 0.0, 1.0))
+            transforms.Lambda(add_noise),
+            transforms.Lambda(clamp_transform)
         ])
 
         ssl._create_default_https_context = ssl._create_unverified_context  
@@ -34,6 +42,5 @@ class CIFAR10():
             download=True,
             transform=ToTensor()
         )
-
 
         return training_data, test_data
