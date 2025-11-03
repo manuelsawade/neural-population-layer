@@ -34,6 +34,24 @@ from metrics.noise_sensitivity import noise_sensitivity_metric
 from metrics.sharpness import sharpness_metric
 from training import training
 
+# Best trial config: {'lr': 0.0001711898326456389, 'batch_size': 128, 'hidden_dim': 200, 'sigma': 0.6, 'neurons': 12, 'orientation': (-4, 4), 'stimulus': <PreferredStimulus.RAND_NORMAL: (0,)>}
+# Best trial final validation loss: 1.7526937300645853
+# Best trial final validation accuracy: 0.3828
+# Best trial final validation fsa_inf: 0.9675893527043017
+# (func pid=497) Checkpoint successfully created at: Checkpoint(filesystem=local, path=/Users/manuelsawade/ray_results/run_2025-11-02_21-44-18/run_b39ec_00004_4_batch_size=128,hidden_dim=400,lr=0.0432,neurons=12,orientation=-4_4,sigma=0.8000,stimulus=ref_ph_e8394d2e_2025-11-02_21-44-18/checkpoint_000009)
+
+# Test 
+#   Accuracy: 39.0%, Avg loss: 1.742967 
+# Roby
+#   fsa_2: 0.476573 (mean)
+#   fsa_2: 0.095572 (std)
+#   fsa_inf: 0.497749 (mean)
+#   fsa_inf: 0.088072 (std)
+#   fsd_2: 0.423995 (mean)
+#   fsd_2: 0.041864 (std)
+#   fsd_inf: 0.473770 (mean)
+#   fsd_inf: 0.044186 (std)
+
 date_time = datetime.now()
 
 identifier = "cifar10_v2_0"
@@ -337,9 +355,9 @@ def main(data_dir):
     config = {
         "lr": tune.loguniform(1e-4, 1e-1),
         "batch_size": tune.choice([128, 256]),
-        "hidden_dim": tune.choice([400]),
-        "sigma": tune.choice([0.8]),
-        "neurons": tune.choice([12]),
+        "hidden_dim": tune.choice([200, 400, 600]),
+        "sigma": tune.choice([0.6, 0.8, 1.2]),
+        "neurons": tune.choice([8, 12, 16]),
         "orientation": tune.choice([(-4,4)]),
         "stimulus": tune.choice([PreferredStimulus.LINEAR, PreferredStimulus.RAND_NORMAL]),
     }
@@ -360,7 +378,7 @@ def main(data_dir):
         result = tune.run(
             partial(run, data_dir=data_dir),
             config=config,
-            num_samples=1,
+            num_samples=10,
             scheduler=scheduler
         )
     except:
