@@ -41,3 +41,25 @@ class SineLayerPopulationActivation(nn.Module):
         a_norm = a / a.max(dim=-1, keepdim=True).values
         
         return a_norm
+    
+class RandomPreferrenceActivation(nn.Module):
+    def __init__(self, neurons, norm = GlobalNorm.MEAN):
+        super().__init__()
+        self.population = nn.Parameter(torch.rand((1, neurons)), requires_grad=False)
+        self.norm: GlobalNorm = norm
+        self.eps = 1e-8
+
+    def forward(self, x):        
+        diff = (x - self.population) ** 2
+        norm = torch.sum(x ** 2, dim=-1, keepdim=True) + torch.sum(self.population ** 2, dim=-1, keepdim=True)
+
+        match self.norm:
+            case GlobalNorm.MEAN:
+                norm = norm.mean(dim=-2, keepdim=True)
+            case GlobalNorm.SDT:
+                norm = norm.std(dim=-2, keepdim=True)
+
+        a = diff / (norm + self.eps)
+        a_norm = a / a.max(dim=-1, keepdim=True).values
+        
+        return a_norm

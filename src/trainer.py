@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
+from functools import partial
 import sys
 import time
 import torch
@@ -7,6 +8,17 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from torch import Tensor
 import os
+import os
+import tempfile
+from pathlib import Path
+import torch
+import torch.nn as nn
+from torch.utils.data import random_split
+from ray import tune
+from ray import train
+from ray.train import Checkpoint, get_checkpoint
+import ray.cloudpickle as pickle
+from ray.tune.schedulers import ASHAScheduler
 
 from metrics.activations import activation_metric
 from metrics.noise_sensitivity import noise_sensitivity_metric
@@ -34,17 +46,17 @@ class Trainer:
             lr=learning_rate,
             weight_decay=weight_decay)
         self.loss_fn = nn.CrossEntropyLoss()
-        self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-        self.test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+        self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True, num_workers=2)
+        self.test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=2)
+        self.training_data = training_data
+        self.test_data = test_data
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dataset = dataset
-        self.flatten = nn.Flatten()
-
-    def train(self, epochs):
-
-        
+        self.flatten = nn.Flatten()  
+    
+    def train(self, epochs):       
         self.epochs = epochs
         self.model.to(self.device)
 
@@ -53,6 +65,8 @@ class Trainer:
         for epoch in range(epochs):
             start = time.time()
             self.model.train()
+
+            roby_scores: dict[str, float] = {}
 
             count = 1
             correct, total = 0, 0
@@ -72,6 +86,12 @@ class Trainer:
 
                 sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Batch [{count * self.batch_size}]')
                 sys.stdout.flush()
+
+                roby_metric(x, pred, p=float('inf'), metric=['fsa'],
+                    append_to=roby_scores)
+                
+                roby_metric(x, pred, p=2, metric=['fsa'],
+                    append_to=roby_scores)
                 
                 count += 1
                 total += y.size(0)
@@ -83,8 +103,10 @@ class Trainer:
                 acc = 0
 
             loss_sum /= len(self.train_loader)
+            fsa_2 = sum(roby_scores["fsa_2"]) / len(roby_scores["fsa_2"])
+            fsa_inf = sum(roby_scores["fsa_inf"]) / len(roby_scores["fsa_inf"])
 
-            sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.2f}, Elapsed Time: {end - start:.2f}s')
+            sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.4f}, FSA_2: {fsa_2:.4f}, FSA_inf: {fsa_inf:.4f}, Elapsed Time: {end - start:.2f}s')
             sys.stdout.write('\n')
 
     def test(self, noise=0.01, summary: dict[str, object]={}, write_file=True):
