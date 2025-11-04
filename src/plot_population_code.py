@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 N = 10
-SIGMA = 0.5
+SIGMA = 1.2
 PREFERRED_VALS = torch.arange(N, dtype=torch.float32)
 
-SELECTED_INDEX = 3
+SELECTED_INDEX = 4
 
 print(torch.normal(
                     mean=0, 
@@ -21,10 +21,10 @@ def population_decode(population_code, preferred_vals=PREFERRED_VALS):
     decoded_digits = (population_code * preferred_vals).sum(dim=1) / population_code.sum(dim=1)
     return decoded_digits
 
-true_digits = torch.tensor([0, 1, 4, 7, 8], dtype=torch.float32)
+true_digits = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=torch.float32)
 population_codes = torch.stack([population_encode(d) for d in true_digits])
 
-noisy_population_codes = population_codes + 0.05 * torch.randn_like(population_codes)
+noisy_population_codes = population_codes + 0.1 * torch.randn_like(population_codes)
 
 decoded_digits = population_decode(noisy_population_codes)
 
@@ -44,6 +44,4 @@ axes[1].set_xlabel("True digit")
 axes[1].set_ylabel("Decoded digit")
 
 plt.tight_layout()
-plt.show()
-
-decoded_digits.numpy()
+plt.savefig("encode_decode.png")

@@ -9,49 +9,30 @@ from datasets.cifar10 import CIFAR10
 
 date_time = datetime.now()
 
-identifier = "cifar10_stateful_preferred_v1_0"
+identifier = "cifar10_linear_v1_0"
 
-parameter = {
-    "dataset": [CIFAR10()],
-    "runs": [10],
-    "epochs": [100],
-    "noise": [0.0, 0.5, 1.0],
-    "hidden_dim": [400],
-    "batch_size": [256],
-    "learning_rate": [0.00001],
-    "weight_decay": [0.0001],
-}
+seed = random.randint(1000000, 9999999)
+torch.manual_seed(seed)  
 
-all_parameter = list(itertools.product(*parameter.values()))
-print(f"max runs: {len(all_parameter) * parameter["runs"][0]}")
+population_training = LinearNetworkTraining(
+    hyper_parameter=HyperParameter(
+        dataset=CIFAR10(),
+        hidden_dim=200,
+        training_noise=0.0,
+        test_noise=0.2,
+        batch_size=64,
+        learning_rate=0.0005609176336288977,
+        weight_decay=0.01,
+        epochs=100,
+        created_on=date_time,
+        seed=seed,
+        subset=None,
+        index=0,
+        identifier=identifier))
 
-def run(params: tuple):
-    dataset, runs, epochs, noise, hidden_dim, batch_size, learning_rate, weight_decay = params
-    for i in range(runs):
-        seed = random.randint(1000000, 9999999)
-        torch.manual_seed(seed)  
-        
-        population_training = LinearNetworkTraining(
-            hyper_parameter=HyperParameter(
-                dataset=dataset,
-                hidden_dim=hidden_dim,
-                training_noise=noise,
-                test_noise=0.2,
-                batch_size=batch_size,
-                learning_rate=learning_rate,
-                weight_decay=weight_decay,
-                epochs=epochs,
-                created_on=date_time,
-                seed=seed,
-                subset=None,
-                index=i,
-                identifier=identifier))
+population_training.run()
 
-        population_training.run()
 
-if __name__ == '__main__':
-    with ProcessPoolExecutor(max_workers=4) as executor:
-        list(executor.map(run, all_parameter))
 
 # torch.Size([128])
 # torch.Size([32, 128])

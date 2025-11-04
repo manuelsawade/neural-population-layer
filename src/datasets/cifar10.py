@@ -18,7 +18,7 @@ class CIFAR10():
             return torch.clamp(tensor, 0.0, 1.0)
         
         def add_noise(tensor):
-            noise = torch.randn_like(tensor) * self.std + self.mean
+            noise = torch.randn_like(tensor) * training_noise + 0.0
             return tensor + noise
         
         transform_with_noise = transforms.Compose([

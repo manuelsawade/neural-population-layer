@@ -23,17 +23,17 @@ torch.manual_seed(seed)
 population_training = NeuronPopulationTraining(
     hyper_parameter=NeuronPopulationParameter(
         dataset=CIFAR10(),
-        hidden_dim=400,
-        training_noise=0.0,
+        hidden_dim=512,
+        training_noise=1.0,
         test_noise=0.2,
         batch_size=128,
-        learning_rate=0.0001,
-        weight_decay=0.001,
+        learning_rate=0.00032999967347189667,
+        weight_decay=0.002778852099843325,
         epochs=100,
         created_on=date_time,
-        sigma=0.8,
+        sigma=0.6,
         orientation=(-4, 4),
-        stimulus=PreferredStimulus.LINEAR,
+        stimulus=PreferredStimulus.RAND_NORMAL,
         neurons=12,
         seed=seed,
         subset=None,
@@ -41,5 +41,4 @@ population_training = NeuronPopulationTraining(
         index=0,
         identifier=identifier))
 
-# population_training.run()
-population_training.tune()
+population_training.run()

@@ -1,0 +1,13 @@
+services:
+  neural-population-layer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    shm_size: '10gb'
+    volumes:
+      # Mount results directory to persist outputs
+      - ./results:/app/results
+      # Optional: mount data directory if you want to use local data
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app/src

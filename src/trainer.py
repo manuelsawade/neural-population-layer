@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import csv
 from datetime import datetime
 from functools import partial
 import sys
@@ -46,8 +47,8 @@ class Trainer:
             lr=learning_rate,
             weight_decay=weight_decay)
         self.loss_fn = nn.CrossEntropyLoss()
-        self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True, num_workers=2)
-        self.test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=2)
+        self.train_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+        self.test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
         self.training_data = training_data
         self.test_data = test_data
         self.batch_size = batch_size
@@ -56,11 +57,12 @@ class Trainer:
         self.dataset = dataset
         self.flatten = nn.Flatten()  
     
-    def train(self, epochs):       
+    def train(self, epochs, output: str | None = None, index: int = 0):       
         self.epochs = epochs
         self.model.to(self.device)
 
         loss_sum = 0
+        rows = []
 
         for epoch in range(epochs):
             start = time.time()
@@ -106,8 +108,18 @@ class Trainer:
             fsa_2 = sum(roby_scores["fsa_2"]) / len(roby_scores["fsa_2"])
             fsa_inf = sum(roby_scores["fsa_inf"]) / len(roby_scores["fsa_inf"])
 
+            rows.append({'epoch': epoch, 'accuracy': acc, 'loss': loss_sum, 'fsa_inf': fsa_inf})
+
             sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.4f}, FSA_2: {fsa_2:.4f}, FSA_inf: {fsa_inf:.4f}, Elapsed Time: {end - start:.2f}s')
             sys.stdout.write('\n')
+
+        with open(f'{output}_training.csv', 'w', newline='') as csvfile:
+            fieldnames = ['epoch', 'accuracy', 'loss', 'fsa_inf']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
 
     def test(self, noise=0.01, summary: dict[str, object]={}, write_file=True):
         #path, file_name = self._create_summary(noise, summary)
