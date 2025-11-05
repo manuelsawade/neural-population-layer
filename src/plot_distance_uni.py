@@ -118,7 +118,7 @@ n_neurons = 50
 x = np.arange(0.5, n_neurons + 0.5)
 
 # Preferred values: sine distribution
-preferred_values = np.sin(np.linspace(0, 2 * np.pi * 2, n_neurons))
+preferred_values = np.random.uniform(-1, 1, n_neurons)#np.sin(np.linspace(0, 2 * np.pi * 2, n_neurons))
 
 # Example random input values (uniform)
 input_values = np.random.uniform(-1, 1, n_neurons)
@@ -163,7 +163,7 @@ for i in range(n_neurons):
 # Labels and title
 #ax.set_xlabel("Hidden Layer Neurons")
 axes[0].set_ylabel("Value")
-axes[0].set_title("Activation With Sine Distribution Initialization")
+axes[0].set_title("Activation With Random Uniform Initialization")
 axes[0].legend(loc='upper right')
 axes[0].set_xlim(0, n_neurons)
 axes[0].set_xticks([])
@@ -181,7 +181,7 @@ ax_heat.grid(False)
 
 # Save to disk
 plt.tight_layout()
-plt.savefig("distance_inverted_activation.png", dpi=300)
+plt.savefig("distance_inverted_activation_uni.png", dpi=300)
 plt.close(fig)
 
 print("Figure saved as: sine_vs_random_activations_inverted.png")

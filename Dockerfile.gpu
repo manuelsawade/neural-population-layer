@@ -1,7 +1,7 @@
-# Use Python 3.9 with CUDA support for GPU acceleration
-FROM python:3.12.12-slim
+# Use PyTorch official image with CUDA support for better GPU performance
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
 
-ENV PYTHONUNBUFFERED=0
+ENV PYTHONUNBUFFERED=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -19,7 +19,6 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install -r requirements.txt
-#RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the source code
 COPY src/ ./src/

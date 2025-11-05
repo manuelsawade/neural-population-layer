@@ -100,8 +100,8 @@ from training import training
 
 date_time = datetime.now()
 
-identifier = "cifar10_v2_0"
-input_dim = 32 * 32 * 3
+identifier = "mnist_v2_0"
+input_dim = 784
 output_dim = 10
 
 training_noise=1.0
@@ -132,14 +132,14 @@ def load_data():
             transforms.Lambda(clamp_transform)
         ])
 
-    training_data = torchvision.datasets.CIFAR10(
+    training_data = torchvision.datasets.MNIST(
         root="data",
         train=True,
         download=True,
         transform=transform_with_noise
     )
 
-    test_data = torchvision.datasets.CIFAR10(
+    test_data = torchvision.datasets.MNIST(
         root="data",
         train=False,
         download=True,
