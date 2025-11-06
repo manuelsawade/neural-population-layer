@@ -108,7 +108,7 @@ class Trainer:
             fsa_2 = sum(roby_scores["fsa_2"]) / len(roby_scores["fsa_2"])
             fsa_inf = sum(roby_scores["fsa_inf"]) / len(roby_scores["fsa_inf"])
 
-            rows.append({'epoch': epoch, 'accuracy': acc, 'loss': loss_sum, 'fsa_inf': fsa_inf})
+            rows.append({'epoch': epoch, 'accuracy': acc, 'loss': loss_sum.item(), 'fsa_inf': fsa_inf})
 
             sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.4f}, FSA_2: {fsa_2:.4f}, FSA_inf: {fsa_inf:.4f}, Elapsed Time: {end - start:.2f}s')
             sys.stdout.write('\n')
