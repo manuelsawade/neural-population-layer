@@ -92,9 +92,6 @@ class Trainer:
                 roby_metric(x, pred, p=float('inf'), metric=['fsa'],
                     append_to=roby_scores)
                 
-                roby_metric(x, pred, p=2, metric=['fsa'],
-                    append_to=roby_scores)
-                
                 count += 1
                 total += y.size(0)
 
@@ -105,16 +102,17 @@ class Trainer:
                 acc = 0
 
             loss_sum /= len(self.train_loader)
-            fsa_2 = sum(roby_scores["fsa_2"]) / len(roby_scores["fsa_2"])
-            fsa_inf = sum(roby_scores["fsa_inf"]) / len(roby_scores["fsa_inf"])
 
-            rows.append({'epoch': epoch, 'accuracy': acc, 'loss': loss_sum, 'fsa_inf': fsa_inf})
+            fsa_inf_mean = sum(roby_scores["fsa_inf"]) / len(roby_scores["fsa_inf"])
+            fsa_inf_std = torch.std(torch.tensor(roby_scores["fsa_inf"]))
 
-            sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.4f}, FSA_2: {fsa_2:.4f}, FSA_inf: {fsa_inf:.4f}, Elapsed Time: {end - start:.2f}s')
+            rows.append({'epoch': epoch, 'accuracy': acc, 'loss': loss_sum.item(), 'fsa_inf_mean': fsa_inf_mean, 'fsa_inf_std': fsa_inf_std.item()})
+
+            sys.stdout.write(f'\rEpoch [{epoch+1:02}/{epochs}], Loss: {loss_sum:.4f}, Acc: {acc*100:.4f}, FSA_inf_mean: {fsa_inf_mean:.4f}, FSA_inf_std: {fsa_inf_std:.4f}, Elapsed Time: {end - start:.2f}s')
             sys.stdout.write('\n')
 
         with open(f'{output}_training.csv', 'w', newline='') as csvfile:
-            fieldnames = ['epoch', 'accuracy', 'loss', 'fsa_inf']
+            fieldnames = ['epoch', 'accuracy', 'loss', 'fsa_inf_mean', 'fsa_inf_std']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()

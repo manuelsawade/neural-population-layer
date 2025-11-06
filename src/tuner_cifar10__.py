@@ -1,9 +1,6 @@
-#!/usr/bin/python3
-
 from collections import OrderedDict
 from datetime import datetime
 from functools import partial
-import json
 import random
 from typing import Any
 import torch
@@ -35,39 +32,53 @@ from populations import TuningCurve
 from metrics.activations import activation_metric
 from metrics.noise_sensitivity import noise_sensitivity_metric
 from metrics.sharpness import sharpness_metric
-from tuner_data_transforms import add_noise, clamp_transform
+from training import training
+
+# Best trial config: {'lr': 0.0001711898326456389, 'batch_size': 128, 'hidden_dim': 200, 'sigma': 0.6, 'neurons': 12, 'orientation': (-4, 4), 'stimulus': <PreferredStimulus.RAND_NORMAL: (0,)>}
+# Best trial final validation loss: 1.7526937300645853
+# Best trial final validation accuracy: 0.3828
+# Best trial final validation fsa_inf: 0.9675893527043017
+# (func pid=497) Checkpoint successfully created at: Checkpoint(filesystem=local, path=/Users/manuelsawade/ray_results/run_2025-11-02_21-44-18/run_b39ec_00004_4_batch_size=128,hidden_dim=400,lr=0.0432,neurons=12,orientation=-4_4,sigma=0.8000,stimulus=ref_ph_e8394d2e_2025-11-02_21-44-18/checkpoint_000009)
+
+# Test 
+#   Accuracy: 39.0%, Avg loss: 1.742967 
+# Roby
+#   fsa_2: 0.476573 (mean)
+#   fsa_2: 0.095572 (std)
+#   fsa_inf: 0.497749 (mean)
+#   fsa_inf: 0.088072 (std)
+#   fsd_2: 0.423995 (mean)
+#   fsd_2: 0.041864 (std)
+#   fsd_inf: 0.473770 (mean)
+#   fsd_inf: 0.044186 (std)
 
 date_time = datetime.now()
 
-identifier = "mnist_v2_0"
-input_dim = 784
+identifier = "cifar10_v2_0"
+input_dim = 32 * 32 * 3
 output_dim = 10
 
-#stack = "linear"
-stack = "population"
+seed = random.randint(1000000, 9999999)
+torch.manual_seed(seed)  
 
-target_metric = "fsa_inf_std"
+def clamp_transform(tensor):
+    return torch.clamp(tensor, 0.0, 1.0)
 
-training_noise=0.0
-training_noise_probability=0.5
+def add_noise(tensor):
+    noise = torch.randn_like(tensor) * 0.1 + 0.0
+    return tensor + noise
 
 def load_data(): 
     ssl._create_default_https_context = ssl._create_unverified_context 
 
-    transform_with_noise = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Lambda(add_noise),
-            transforms.Lambda(clamp_transform)
-        ])
-
-    training_data = torchvision.datasets.MNIST(
+    training_data = torchvision.datasets.CIFAR10(
         root="data",
         train=True,
         download=True,
-        transform=transform_with_noise
+        transform=ToTensor()
     )
 
-    test_data = torchvision.datasets.MNIST(
+    test_data = torchvision.datasets.CIFAR10(
         root="data",
         train=False,
         download=True,
@@ -76,9 +87,8 @@ def load_data():
 
     return training_data, test_data
 
-def get_stack(config):
-    if stack == "population":
-        return nn.Sequential(
+def run(config, data_dir=None):
+        stack = nn.Sequential(
             nn.Linear(input_dim, config["hidden_dim"]),
             NeuronPopulation(
                 config["hidden_dim"], 
@@ -90,20 +100,13 @@ def get_stack(config):
             nn.LazyLinear(output_dim),     
             )
 
-    return nn.Sequential(
-        nn.Linear(input_dim, config["hidden_dim"]),
-        nn.ReLU(), 
-        nn.Linear(config["hidden_dim"], output_dim))
-
-def run(config, data_dir=None):
-        stack = get_stack(config)
-
         optimizer = torch.optim.AdamW(
             stack.parameters(), 
-            lr=config["lr"],
-            weight_decay=config["weight_decay"])
+            lr=config["lr"])
         
         loss_fn = nn.CrossEntropyLoss()
+
+        #optimizer = optim.SGD(net.parameters(), lr=config["lr"], momentum=0.9)
 
         checkpoint = get_checkpoint()
         if checkpoint:
@@ -206,16 +209,11 @@ def run(config, data_dir=None):
                     pickle.dump(checkpoint_data, fp)
 
                 checkpoint = Checkpoint.from_directory(checkpoint_dir)
-
-                mean = sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"])
-                std = torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item()
-
                 tune.report(
                     {
                         "loss": val_loss / val_steps, 
                         "accuracy": correct / total, 
-                        "fsa_inf_mean": sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"]),
-                        "fsa_inf_std": torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item(),
+                        "fsa_inf": sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"])
                     },
                     checkpoint=checkpoint,
                 )
@@ -223,7 +221,17 @@ def run(config, data_dir=None):
         print("Finished Training") 
 
 def test(config, checkpoint_data, noise=0.2):
-    model = get_stack(config)
+    model = nn.Sequential(
+        nn.Linear(input_dim, config["hidden_dim"]),
+        NeuronPopulation(
+            config["hidden_dim"], 
+            sigma=config["sigma"],#sigma=hyper_parameter.sigma,
+            neurons=config["neurons"],#neurons=hyper_parameter.neurons,
+            orientation=config["orientation"],#orientation=hyper_parameter.orientation,
+            activation=TuningCurve(readout=WeightedAverageDecoder()),
+            stimulus=config["stimulus"]),
+        nn.LazyLinear(output_dim),     
+            )   
     
     model.load_state_dict(checkpoint_data["net_state_dict"])
 
@@ -231,14 +239,18 @@ def test(config, checkpoint_data, noise=0.2):
 
     training_data, test_data = load_data()
     test_loader = torch.utils.data.DataLoader(
-        test_data, batch_size=int(config["batch_size"]), shuffle=False
+        test_data, batch_size=int(config["batch_size"]), shuffle=False, num_workers=1
     )
 
     size = len(test_loader.dataset)
     num_batches = len(test_loader)
     test_loss, correct = 0, 0
 
+    sharpness_scores: dict[str, float] = {}
     roby_scores: dict[str, float] = {}
+    noise_sensitivity_scores: dict[str, list[float]] = {}
+
+    #activation_metric(model, append_to=activation_scores)
 
     flatten = nn.Flatten()
 
@@ -253,82 +265,94 @@ def test(config, checkpoint_data, noise=0.2):
             test_loss += base_loss
 
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+            # sharpness_metric(model, x, y, noise, base_loss, loss_fn, 
+            #     append_to=sharpness_scores)
             
-            roby_metric(x, pred, p=float('inf'), metric=['fsa'],
+            roby_metric(x, pred, p=float('inf'), metric=['fsa', 'fsd'],
                 append_to=roby_scores)
             
-            roby_metric(x, pred, p=2, metric=['fsa'],
+            roby_metric(x, pred, p=2, metric=['fsa', 'fsd'],
                 append_to=roby_scores)
+            
+            # noise_sensitivity_metric(model, x, y, attack='fgsm', topk=output_dim, 
+            #     append_to=noise_sensitivity_scores)
+            
+            #autoattack_metric(self.model, x, y, self.device, eps=8/255, norm='Linf', log_path=path)
     
     test_loss /= num_batches
     correct /= size
 
-    config["test_accuracy"] = 100*correct
-    config["test_loss"] = test_loss
+    print(f"\nTest \n  Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>4f} ")
+    # print(f"Activations")
+    # for layer in activation_scores['scores']:
+    #     stds = torch.tensor(activation_scores['scores'][layer]['std'])
+    #     sizes = torch.tensor(activation_scores['scores'][layer]['len'])
 
-    copy = config.copy()
-    if copy.get("stimulus") is not None:
-        copy["stimulus"] = copy["stimulus"].name
+    #     variances = stds ** 2
+    #     weighted = torch.sum(variances * sizes) / torch.sum(sizes)
+    #     std = torch.sqrt(weighted)
 
+    #     activation_output[layer] = {}
+    #     activation_output[layer]['std'] = std.item()
+    #     activation_output[layer]['mean'] = (activation_scores['scores'][layer]['mean'] / num_batches).item()
+
+    #     print(f"  {layer}: {activation_scores['scores'][layer]['mean'] / num_batches:>4f} (mean), {std:>4f} (std)")
+
+    # print(f"Sharpness")
+    # sharpness_output = {}
+    # for param in sharpness_scores:
+    #     sharpness_output[param] = sum(sharpness_scores[param]) / len(sharpness_scores[param])
+    #     print(f"  {param}: {sum(sharpness_scores[param]) / len(sharpness_scores[param]):>4f}")
+    
+    print(f"Roby")
+    roby_output = {}
     roby_scores = OrderedDict(sorted(roby_scores.items()))
     for param in roby_scores:
         mean = sum(roby_scores[param]) / len(roby_scores[param])
         std = torch.std(torch.tensor(roby_scores[param]))
 
-        copy[f"test_{param}_mean"] = mean
-        copy[f"test_{param}_std"] = std.item()
+        roby_output[param] = {}
+        roby_output[param]['mean'] = sum(roby_scores[param]) / len(roby_scores[param])
+        roby_output[param]['std'] = std.item()
 
-    print(f"Best trial config: {json.dumps(copy, indent=2)}")
+        print(f"  {param}: {mean:>4f} (mean)")
+        print(f"  {param}: {std:>4f} (std)")
+
+    # print(f"Noise Sensitivity")
+    # noise_sensitivity_output = {}
+    # for param in noise_sensitivity_scores:
+    #     mean = sum(noise_sensitivity_scores[param]) / len(noise_sensitivity_scores[param])
+    #     std = torch.std(torch.tensor(noise_sensitivity_scores[param]))
+        
+    #     noise_sensitivity_output[param] = {}
+    #     noise_sensitivity_output[param]['mean'] = sum(noise_sensitivity_scores[param]) / len(noise_sensitivity_scores[param])
+    #     noise_sensitivity_output[param]['std'] = std.item()
+
+    #     print(f"  {param}: {mean:>4f} (mean)")
+    #     print(f"  {param}: {std:>4f} (std)")
 
     print("\n")
 
-def get_config():
+def main(data_dir):
     config = {
         "lr": tune.loguniform(1e-4, 1e-1),
-        "weight_decay": tune.loguniform(1e-6, 1e-2),
-        "batch_size": tune.choice([64, 128, 256]),
-        "hidden_dim": tune.choice([128, 256, 512]),
+        "batch_size": tune.choice([128, 256]),
+        "hidden_dim": tune.choice([200, 400, 600]),
+        "sigma": tune.choice([0.6, 0.8, 1.2]),
+        "neurons": tune.choice([8, 12, 16]),
+        "orientation": tune.choice([(-4,4)]),
+        "stimulus": tune.choice([PreferredStimulus.LINEAR, PreferredStimulus.RAND_NORMAL]),
     }
-    
-    if stack == "population":
-        config["sigma"] = tune.choice([0.6, 0.8, 1.2])
-        config["neurons"] = tune.choice([12])
-        config["orientation"] = tune.choice([(-2,2),(-4,4)])
-        config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL])
-    
-    return config
-
-def test_best_trial(result, metric, mode):
-    best_trial = result.get_best_trial(metric, mode, "last")
-    best_trial.config["stack"] = stack
-    best_trial.config["noise"] = training_noise
-    best_trial.config["noise_probability"] = training_noise_probability
-    best_trial.config["metric"] = metric
-    best_trial.config["target_metric"] = target_metric
-    best_trial.config["loss"] = best_trial.last_result['loss'].item()
-    best_trial.config["accuracy"] = best_trial.last_result['accuracy']
-    best_trial.config["fsa_inf_mean"] = best_trial.last_result['fsa_inf_mean']
-    best_trial.config["fsa_inf_std"] = best_trial.last_result['fsa_inf_std']
-
-    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric=metric, mode=mode)
-    with best_checkpoint.as_directory() as checkpoint_dir:
-        data_path = Path(checkpoint_dir) / "data.pkl"
-        with open(data_path, "rb") as fp:
-            best_checkpoint_data = pickle.load(fp)
-
-        test(best_trial.config, best_checkpoint_data)   
-
-def main(data_dir):
-    config = get_config()
 
     load_data()
 
     scheduler = ASHAScheduler(
-        metric=target_metric,
-        mode="min",
+        metric="fsa_inf",
+        mode="max",
         max_t=10,
         grace_period=1,
-        reduction_factor=2
+        reduction_factor=2,
     ) 
 
     result: Any | None
@@ -337,14 +361,25 @@ def main(data_dir):
         result = tune.run(
             partial(run, data_dir=data_dir),
             config=config,
-            num_samples=30,
-            scheduler=scheduler,
-            max_concurrent_trials=12,
+            num_samples=10,
+            scheduler=scheduler
         )
     except:
         print("error")
 
-    test_best_trial(result, metric="loss", mode="min") 
+    best_trial = result.get_best_trial("loss", "min", "last")
+    print(f"Best trial config: {best_trial.config}")
+    print(f"Best trial final validation loss: {best_trial.last_result['loss']}")
+    print(f"Best trial final validation accuracy: {best_trial.last_result['accuracy']}")
+    print(f"Best trial final validation fsa_inf: {best_trial.last_result['fsa_inf']}")
+
+    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="accuracy", mode="max")
+    with best_checkpoint.as_directory() as checkpoint_dir:
+        data_path = Path(checkpoint_dir) / "data.pkl"
+        with open(data_path, "rb") as fp:
+            best_checkpoint_data = pickle.load(fp)
+
+        test(best_trial.config, best_checkpoint_data)   
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:

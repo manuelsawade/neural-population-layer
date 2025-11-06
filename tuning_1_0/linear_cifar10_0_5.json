@@ -121,26 +121,5 @@
     "test_fsa_2_std": 0.07934240996837616,
     "test_fsa_inf_mean": 0.49571394324302676,
     "test_fsa_inf_std": 0.08724640309810638
-  },
-  {
-    "lr": 0.00020277965520772962,
-    "weight_decay": 8.477396456451533e-05,
-    "batch_size": 128,
-    "hidden_dim": 512,
-    "stack": "linear",
-    "noise": 1.0,
-    "noise_probability": 0.5,
-    "metric": "loss",
-    "target_metric": "fsa_inf_std",
-    "loss": 1.75929545601712,
-    "accuracy": 0.3834,
-    "fsa_inf_mean": 0.9162915914873534,
-    "fsa_inf_std": 0.021388573572039604,
-    "test_accuracy": 43.169999999999995,
-    "test_loss": 1.6265314560902269,
-    "test_fsa_2_mean": 0.47675170626821395,
-    "test_fsa_2_std": 0.08344773948192596,
-    "test_fsa_inf_mean": 0.44780078266240375,
-    "test_fsa_inf_std": 0.1019086018204689
   }
 ]
