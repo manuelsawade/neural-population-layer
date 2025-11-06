@@ -13,13 +13,19 @@ class CIFAR10():
     output_dim = 10
     name = "cifar10"
 
-    def __call__(self, training_noise=0.0):
+    def __call__(self, training_noise=0.0, noise_probability=1.0):
         def clamp_transform(tensor):
             return torch.clamp(tensor, 0.0, 1.0)
         
         def add_noise(tensor):
-            noise = torch.randn_like(tensor) * training_noise + 0.0
-            return tensor + noise
+            if noise_probability <= 0.0:
+                return tensor
+
+            if training_noise < torch.rand(1).item() or training_noise >= 1.0:  
+                noise = torch.randn_like(tensor) * training_noise + 0.0
+                return tensor + noise
+            
+            return tensor
         
         transform_with_noise = transforms.Compose([
             transforms.ToTensor(),
