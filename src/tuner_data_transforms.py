@@ -2,13 +2,12 @@
 
 import torch
 
-training_noise=1.0
 training_noise_probability=0.5
 
 def clamp_transform(tensor):
     return torch.clamp(tensor, 0.0, 1.0)
 
-def add_noise(tensor):
+def add_noise(tensor, training_noise=0.5):
     if training_noise_probability <= 0.0:
         return tensor
     

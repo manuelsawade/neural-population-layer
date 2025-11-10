@@ -30,6 +30,7 @@ class HyperParameter:
     subset: int | None
     index: int
     identifier: str
+    stack: str
 
     def toDict(self):
         return {
@@ -53,7 +54,7 @@ class HyperParameter:
         return datetime.strftime("%Y_%m_%d_%H_%M_%S")
     
     def get_output_file(self):
-        return "_".join([self.dataset.name, str(self.hidden_dim), str(self.training_noise), str(self.test_noise), str(self.batch_size), str(self.learning_rate), str(self.weight_decay), str(self.epochs), "none" if self.subset is None else str(self.subset), str(self.index), self.identifier]).replace(" ", "").replace(",", "_").replace(".", "_")
+        return "_".join([self.stack, self.dataset.name, str(self.training_noise), str(self.hidden_dim), str(self.test_noise), str(self.batch_size), str(self.learning_rate), str(self.weight_decay), str(self.epochs), "none" if self.subset is None else str(self.subset), str(self.index), self.identifier]).replace(" ", "").replace(",", "_").replace(".", "_")
 
 @dataclass
 class NeuronPopulationParameter(HyperParameter):
@@ -91,9 +92,8 @@ class TrainingBase:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        file_path = f'{folder_path}/{self.hyper_parameter.get_output_file()}.json'
+        file_path = f'{folder_path}/{self.network}_{self.hyper_parameter.get_output_file()}.json'
         if Path(file_path).exists():
-            print(f"Skipped training: File already exists: {file_path}")
             return
                 
         trainer = Trainer(
@@ -106,7 +106,7 @@ class TrainingBase:
             subset=self.hyper_parameter.subset
         )
 
-        trainer.train(epochs=self.hyper_parameter.epochs, output=file_path)
+        trainer.train(epochs=self.hyper_parameter.epochs)
         trainer.test(noise=self.hyper_parameter.test_noise, summary=self.output, write_file=False)
 
         self.output['hyper_parameter'] = self.hyper_parameter.toDict()

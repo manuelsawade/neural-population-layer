@@ -79,7 +79,14 @@ class Distribution(Enum):
     ZERO_MEAN = 0,
     ZERO_BASE = 1,
 
-class SineWave:
+class SineWave(nn.Module):
+    def __init__(self, freq, phase, amp, x_pos, x_size, dist=Distribution.ZERO_MEAN):
+        super().__init__()
+        self.freq = freq,
+        self.phase = nn.Parameter(phase)
+        self.amp = nn.Parameter(amp)
+        self.distribution = dist
+
     def __call__(self, freq, phase, amp, x_pos, x_size, dist=Distribution.ZERO_MEAN):
         if dist == Distribution.ZERO_MEAN: 
             return self._sine(freq, phase, amp, x_pos, x_size)

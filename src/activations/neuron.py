@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -6,11 +6,11 @@ from torch import Tensor
 from decoder import WeightedAverageDecoder
 from populations import CircularPopulationBase, PopulationBase, TuningCurve
 
-class PreferredStimulus(Enum):
-    RAND_NORMAL = 0,
-    RAND_UNIFORM = 1,
-    LINEAR = 2,
-    COSINE = 3
+class PreferredStimulus(StrEnum):
+    RAND_NORMAL = 'RAND_NORMAL',
+    RAND_UNIFORM = 'RAND_UNIFORM',
+    LINEAR = 'LINEAR',
+    COSINE = 'COSINE'
 
 class NeuronPopulation(nn.Module):
     def __init__(

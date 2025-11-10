@@ -75,54 +75,120 @@ def main():
     print("Loading JSON files...")
     df = load_json_files(folder, ignore)
     print(f"Loaded {len(df)} records.")
-    print(df)
 
     df["accuracy"]=df["accuracy"] / 100
 
+    global_loss = df[['train_loss', 'avg_loss']].values.flatten()
+    global_min = global_loss.min()
+    global_max = global_loss.max()
+
+    df["train_loss"]=(df["train_loss"] - global_min)/(global_max - global_min)
+    df["avg_loss"]=(df["avg_loss"] - global_min)/(global_max - global_min)
+
+    stacks = ["linear", "population"]
     metric_map = [["train_accuracy", "accuracy"], ["train_loss", "avg_loss"], ["train_fsa_inf_mean", "rub.fsa_inf.mean"]]
 
-    # Prepare a figure with 3 subplots in a row
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True)
+    fig, axes = plt.subplots(2, 3, figsize=(10, 4), sharex=True)
     fig.supxlabel('Noise Level')
-    print("train")
+
+    color_map = {
+        "linear": {
+            1: {
+                "stage":"test",
+                "color":"purple"
+            },
+            0: {
+                "stage":"train",
+                "color":"orange"
+            }
+        },
+        "population": {
+            1: {
+                "stage":"test",
+                "color":"purple"
+            },
+            0: {
+                "stage":"train",
+                "color":"orange"
+            }
+        }
+    }
     
 
-    # Loop through each metric and create a plot
-    for ax, metrics in zip(axes, metric_map):
-        # Group by stack and noise for each metric
+    train_label: str | None = None
+    test_label: str | None = None
 
-        # Plot each stack as a line with error bars
-        for stack_name, group in df.groupby("network"):
-            for i, metric in enumerate(metrics):
-                stage = "train" if i == 0 else "test"
+    for row_axes, stacks in zip(axes, stacks):
+        for ax, metrics in zip(row_axes, metric_map):
+            subset = df.loc[df['network'] == stacks]
+            subset = subset.sort_values(by='hyp.training_noise', ascending=True)
+            for i, split_df in enumerate(subset.groupby(metrics)):
 
-                print(group)
-                ax.plot(
-                    group["hyp.training_noise"], 
-                    group[metric], 
-                    linewidth=2,
-                    label=f"{stack_name} ({stage})"
-                )
+                for i, metric in enumerate(metrics):                    
+                    label = ""
 
-        # Axis settings
-        ax.set_title(metrics[0].capitalize())
+                    stage = color_map[stacks][i]["stage"]
+                    color = color_map[stacks][i]["color"]
 
-        if metrics[0] == "fsa_inf_mean":
-            ax.set_ylim(0.35, 0.56)
-            ax.set_title("FSA Inf")
+                    if i == 0 and train_label is None:
+                        train_label =f"{stage}"
+                        label = train_label
 
-        if metrics[0] == "fsa_inf_mean_smoothed":
-            ax.set_ylim(0.35, 0.56)
-            ax.set_title("FSA Inf Smoothed (Window = 20)")
+                    if i == 1 and test_label is None:
+                        test_label =f"{stage}"
+                        label = test_label
+                  
+                    ax.plot(split_df[1]["hyp.training_noise"], 
+                            split_df[1][metric], 
+                            marker="o", 
+                            linewidth=10, 
+                            color=color,
+                            label=label)          
 
-        ax.grid(True, linestyle=":", alpha=0.6)
-        ax.set_xticks([0, 0.5, 1.0])
-        #ax.set_xlabel("Noise Level")
-        #ax.set_ylim(0, 1)
+            for i, noise in enumerate([0.0, 0.5, 1.0]):
+                train_val = subset[metrics[0]].values              
+                test_val = subset[metrics[1]].values
+                
+                if len(train_val) and len(test_val):
+                    print(f"line for {stacks} {metrics}", subset)
+                    ax.plot([noise, noise], [train_val[i], test_val[i]],
+                            color='black', linestyle=':', alpha=0.8, linewidth=3)
+
+            ax.grid(True, linestyle=":", alpha=0.6)
+
+            if stacks in "linear":            
+                if metrics[0] == "train_accuracy":
+                    ax.set_title("Accuracy")
+                    ax.set_ylim(0.0, 1.0)
+
+                if metrics[0] == "train_loss":
+                    ax.set_ylim(0.0, 1.0)
+                    ax.set_title("Loss (Normalized)")
+                
+                if metrics[0] == "train_fsa_inf_mean":
+                    ax.set_ylim(0.35, 0.56)
+                    ax.set_title("FSA Inf")
+            else:
+                ax.set_xticks([0, 0.5, 1.0])
+                #ax.set_ylim(0, 1)
+                
+                if metrics[0] == "train_accuracy":
+                    ax.set_ylim(0.0, 1.0)
+
+                if metrics[0] == "train_loss":
+                    ax.set_ylim(0.0, 1.0)
+                
+                if metrics[0] == "train_fsa_inf_mean":
+                    ax.set_ylim(0.35, 0.56)
+
+
+            ax.grid(True, linestyle=":", alpha=0.6)
 
     # # Add legend to the first subplot only (to avoid clutter)
-    axes[0].legend(title="Stack", loc="best")
-    fig.suptitle("CIFAR10 Training")
+    axes[0][0].set_ylabel("Linear Network")
+    axes[1][0].set_ylabel("Population Network")
+    fig.legend(loc="outside upper left", prop={'size': 10})
+    fig.suptitle("CIFAR10 Train-Test-Difference")
 
     # Layout and save
     plt.tight_layout()

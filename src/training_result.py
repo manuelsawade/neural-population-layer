@@ -58,13 +58,27 @@ def main():
 
     # Prepare a figure with 3 subplots in a row
     fig, axes = plt.subplots(1, 4, figsize=(15, 5), sharex=True)
-    fig.supxlabel('Epochs')
     print("train")
     
-    df["fsa_inf_mean_smoothed"] = (
-    df.groupby(["stack", "noise"])["fsa_inf_mean"]
-    .transform(lambda x: x.rolling(window=20, center=True, min_periods=1).mean())
-)
+    df["fsa_inf_mean_smoothed"] = (df
+        .groupby(["stack", "noise"])["fsa_inf_mean"]
+        .transform(lambda x: x
+                   .rolling(window=20, center=True, min_periods=1)
+                   .mean())
+    )
+
+    color_map = {
+        "linear": {
+            "1.0": "darkorange",
+            "0.5": "#FFA447",
+            "0.0": "#FFE0B2",
+        },
+        "population": {
+            "0.0": "#E0AAFF",
+            "0.5": "#9A58D0",
+            "1.0": "purple",
+        },
+    }
 
     # Loop through each metric and create a plot
     for ax, metric in zip(axes, metrics):
@@ -73,15 +87,20 @@ def main():
         # Plot each stack as a line with error bars
         for stack_name, group in df.groupby("stack"):
             for noise_level, group in group.groupby("noise"):
+                print(stack_name, noise_level)
+                color = color_map[stack_name][str(noise_level)]
                 ax.plot(
                     group["epoch"], 
                     group[metric], 
                     linewidth=2,
+                    color=color,
                     label=f"{stack_name} (noise={noise_level})"
                 )
 
         # Axis settings
         ax.set_title(metric.capitalize())
+        if metric == "accuracy":
+            ax.set_ylabel("Training")
 
         if metric == "fsa_inf_mean":
             ax.set_ylim(0.35, 0.56)
