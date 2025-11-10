@@ -3,6 +3,6 @@ matplotlib
 numpy
 scipy
 torchvision
-ray
+ray   
 ray[tune]
 pydantic

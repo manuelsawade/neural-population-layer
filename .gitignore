@@ -403,3 +403,7 @@ LC25000/
 images/
 experiments
 results
+
+data/cifar-10-batches-py/
+
+data/cifar-10-python.tar.gz

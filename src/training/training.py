@@ -11,7 +11,8 @@ import torch.nn as nn
 from activations.neuron import NeuronPopulation, PreferredStimulus, WeightedAverageDecoder
 from datasets.base import Dataset
 from networks import NeuralNetwork
-from populations import CircularPopulationBase, CircularTuningCurve, PopulationBase, TuningCurve
+from populations import CircularPopulationBase, CircularTuningCurve, Distribution, PopulationBase, TuningCurve
+from src.activations.sine_layer import SineLayerPopulationActivation
 from trainer import Trainer
 from datasets.mnist import MNIST
 
@@ -76,6 +77,25 @@ class NeuronPopulationParameter(HyperParameter):
     
     def get_output_file(self):
         return "_".join([super().get_output_file(), str(self.sigma), str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus)]).replace(" ", "").replace(",", "_").replace(".", "_")
+    
+@dataclass
+class PreferredPopulationParameter(HyperParameter):
+    freq: float | None
+    phase: int | None
+    amp: float | None
+    dist: Distribution | None
+
+    def toDict(self):
+        dict = super().toDict()
+        dict["freq"] = self.freq
+        dict["phase"] = self.phase
+        dict["amp"] = self.amp
+        dict["dist"] = self.dist.name if self.dist else None
+        return dict
+
+    def get_output_file(self):
+        return "_".join([super().get_output_file(), str(self.freq), str(self.phase), str(self.amp), str(self.dist)]).replace(" ", "").replace(",", "_").replace(".", "_")
+
         
 
 @dataclass
@@ -132,6 +152,24 @@ class NeuronPopulationTraining(TrainingBase):
             )
 
         self.run_stack(stack) 
+
+class PreferredPopulationTraining(TrainingBase):
+    hyper_parameter: PreferredPopulationParameter
+    network = "preferred_population"
+
+    def run(self):
+        stack = nn.Sequential(
+            nn.Linear(self.hyper_parameter.dataset.input_dim, self.hyper_parameter.hidden_dim),
+            SineLayerPopulationActivation(
+                self.hyper_parameter.hidden_dim,
+                freq=self.hyper_parameter.freq,
+                phase=self.hyper_parameter.phase,
+                amp=self.hyper_parameter.amp,
+                dist=self.hyper_parameter.dist
+            ),   
+            )
+
+        self.run_stack(stack)
 
 
 class LinearNetworkTraining(TrainingBase):
