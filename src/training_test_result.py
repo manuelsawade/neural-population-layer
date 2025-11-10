@@ -70,7 +70,9 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 def main():
-    folder = "./experiments/cifar10_evaluation/"
+    identifier = "cifar10_evaluation"
+    folder = f"./experiments/{identifier}/"
+
     ignore = ["neurons", "orientation", "activation", "stimulus", "sigma", "sharpness_scores", "activation_scores", "dataset", "noise_sensitivity", "seed", "created_on", "fsd_2", "fsa_2", "fsd_inf", "hidden_dim", "test_noise", "batch_size", "learning_rate", "weight_decay", "epochs", "subset"]
     print("Loading JSON files...")
     df = load_json_files(folder, ignore)
@@ -192,7 +194,7 @@ def main():
 
     # Layout and save
     plt.tight_layout()
-    plt.savefig(f"{folder}training_test_performance.png", dpi=300)
+    plt.savefig(f"{folder}{identifier}_training_test_performance.png", dpi=300)
     plt.close(fig)
 
     print("Figure saved as performance_vs_noise_all_metrics.png")

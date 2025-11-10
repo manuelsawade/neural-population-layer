@@ -92,7 +92,7 @@ class TrainingBase:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        file_path = f'{folder_path}/{self.network}_{self.hyper_parameter.get_output_file()}.json'
+        file_path = f'{folder_path}/{self.hyper_parameter.get_output_file()}.json'
         if Path(file_path).exists():
             return
                 
@@ -106,7 +106,7 @@ class TrainingBase:
             subset=self.hyper_parameter.subset
         )
 
-        trainer.train(epochs=self.hyper_parameter.epochs)
+        trainer.train(epochs=self.hyper_parameter.epochs, output=file_path)
         trainer.test(noise=self.hyper_parameter.test_noise, summary=self.output, write_file=False)
 
         self.output['hyper_parameter'] = self.hyper_parameter.toDict()

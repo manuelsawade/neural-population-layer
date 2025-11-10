@@ -47,8 +47,9 @@ def load_csv_files(folder: str) -> pd.DataFrame:
     return pd.concat(dataframes)
 
 def main():
-    folder = "./experiments/cifar10_evaluation/"
-
+    #folder = "./experiments/cifar10_evaluation/"
+    identifier = "mnist_evaluation"
+    folder = f"./experiments/{identifier}/"
     print("Loading JSON files...")
     df = load_csv_files(folder)
     print(f"Loaded {len(df)} records.")
@@ -118,7 +119,7 @@ def main():
 
     # Layout and save
     plt.tight_layout()
-    plt.savefig(f"{folder}training_performance.png", dpi=300)
+    plt.savefig(f"{folder}{identifier}_training_performance.png", dpi=300)
     plt.close(fig)
 
     print("Figure saved as performance_vs_noise_all_metrics.png")

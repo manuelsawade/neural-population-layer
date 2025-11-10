@@ -4,13 +4,19 @@ from collections import OrderedDict
 from datetime import datetime
 from functools import partial
 import json
+import random
 from typing import Any
 import torch
 import torch.nn as nn
+import os
+import os
 import tempfile
 from pathlib import Path
+import torch
+import torch.nn as nn
 from torch.utils.data import random_split
 from ray import tune
+from ray import train
 from ray.tune import Checkpoint, get_checkpoint
 import ray.cloudpickle as pickle
 from ray.tune.schedulers import ASHAScheduler
@@ -21,65 +27,47 @@ import torchvision.transforms as transforms
 import ssl
 import torchvision
 
+from datasets.noise import AddGaussianNoise
 from activations.neuron import NeuronPopulation, PreferredStimulus
+from datasets.cifar10 import CIFAR10
 from decoder import WeightedAverageDecoder
 from populations import TuningCurve
+from metrics.activations import activation_metric
+from metrics.noise_sensitivity import noise_sensitivity_metric
+from metrics.sharpness import sharpness_metric
 from tuner_data_transforms import add_noise, clamp_transform
 
 date_time = datetime.now()
 
-identifier = "cifar10_evaluation"
-input_dim = 32 * 32 * 3
+identifier = "mnist_v2_0"
+input_dim = 784
 output_dim = 10
 
 #stack = "linear"
 stack = "population"
+
 target_metric = "fsa_inf_std"
-target_mode="min"
 
 training_noise=0.0
-
-scheduler = ASHAScheduler(
-    metric=target_metric,
-    mode=target_mode,
-    max_t=50,        
-    grace_period=4,
-    reduction_factor=2
-) 
-
-def get_config():
-    config = {
-        "lr": tune.loguniform(1e-4, 1e-1),
-        "weight_decay": tune.loguniform(1e-6, 1e-2),
-        "batch_size": tune.choice([32, 64, 128, 256]),
-        "hidden_dim": tune.choice([128, 256, 512]),
-    }
-    
-    if stack == "population":
-        config["sigma"] = tune.loguniform(0.5, 1.5)
-        config["neurons"] = tune.choice([12, 14, 16, 18])
-        config["orientation"] = tune.choice([(-2,2),(-4,4),(-5,5)])
-        config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
-    
-    return config
+training_noise_probability=0.5
 
 def load_data(): 
     ssl._create_default_https_context = ssl._create_unverified_context 
 
     transform_with_noise = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Lambda(partial(add_noise, training_noise=training_noise)),
+            transforms.Lambda(add_noise),
             transforms.Lambda(clamp_transform)
         ])
 
-    training_data = torchvision.datasets.CIFAR10(
+    training_data = torchvision.datasets.MNIST(
         root="data",
         train=True,
         download=True,
         transform=transform_with_noise
     )
 
-    test_data = torchvision.datasets.CIFAR10(
+    test_data = torchvision.datasets.MNIST(
         root="data",
         train=False,
         download=True,
@@ -137,19 +125,27 @@ def run(config, data_dir=None):
         )
 
         trainloader = torch.utils.data.DataLoader(
-            train_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=2
+            train_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=1
         )
         valloader = torch.utils.data.DataLoader(
-            val_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=2
+            val_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=1
         )
 
         flatten = nn.Flatten()
 
-        for epoch in range(start_epoch, 10): 
+        test_fsa_scores = {}
+
+        for epoch in range(start_epoch, 10):  # loop over the dataset multiple times
+            running_loss = 0.0
+            epoch_steps = 0
             for i, data in enumerate(trainloader, 0):
+                # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+
+                # zero the parameter gradients
                 optimizer.zero_grad()
 
+                # forward + backward + optimize
                 flatten = nn.Flatten()
 
                 inputs = flatten(inputs)
@@ -159,6 +155,21 @@ def run(config, data_dir=None):
                 loss.backward()
                 optimizer.step()
 
+                # print statistics
+
+                roby_metric(outputs, inputs, p=float('inf'), metric=['fsa'],
+                    append_to=test_fsa_scores)
+
+                running_loss += loss.item()
+                epoch_steps += 1
+                if i % 2000 == 1999:  # print every 2000 mini-batches
+                    print(
+                        "[%d, %5d] loss: %.3f, fsa_inf: %.3f"
+                        % (epoch + 1, i + 1, running_loss / epoch_steps, sum(test_fsa_scores["fsa_inf"]) / len(test_fsa_scores["fsa_inf"]))
+                    )
+                    running_loss = 0.0
+
+            # Validation loss
             val_loss = 0.0
             val_steps = 0
             total = 0
@@ -203,22 +214,22 @@ def run(config, data_dir=None):
                     {
                         "loss": val_loss / val_steps, 
                         "accuracy": correct / total, 
-                        "fsa_inf_mean": mean,
-                        "fsa_inf_std": std,
+                        "fsa_inf_mean": sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"]),
+                        "fsa_inf_std": torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item(),
                     },
                     checkpoint=checkpoint,
                 )
 
         print("Finished Training") 
 
-def test(config, checkpoint_data, scope):
+def test(config, checkpoint_data, noise=0.2):
     model = get_stack(config)
     
     model.load_state_dict(checkpoint_data["net_state_dict"])
 
     model.eval()
 
-    _, test_data = load_data()
+    training_data, test_data = load_data()
     test_loader = torch.utils.data.DataLoader(
         test_data, batch_size=int(config["batch_size"]), shuffle=False
     )
@@ -267,22 +278,31 @@ def test(config, checkpoint_data, scope):
         copy[f"test_{param}_mean"] = mean
         copy[f"test_{param}_std"] = std.item()
 
-    result = json.dumps(copy, indent=2)
-
-    print(f"Best trial config: {result}")
-
-    date = date_time.strftime("%Y_%m_%d_%H_%M_%S")
-
-    with open(f"./experiments/tuning/{stack}_{scope}_{identifier}_{date}.json", mode='w', newline='') as file:
-        file.write(result)
+    print(f"Best trial config: {json.dumps(copy, indent=2)}")
 
     print("\n")
 
-def test_best_trial(result, metric, mode, scope):
-    best_trial = result.get_best_trial(metric, mode, scope)
+def get_config():
+    config = {
+        "lr": tune.loguniform(1e-4, 1e-1),
+        "weight_decay": tune.loguniform(1e-6, 1e-2),
+        "batch_size": tune.choice([64, 128, 256]),
+        "hidden_dim": tune.choice([128, 256, 512]),
+    }
+    
+    if stack == "population":
+        config["sigma"] = tune.choice([0.6, 0.8, 1.2])
+        config["neurons"] = tune.choice([12])
+        config["orientation"] = tune.choice([(-2,2),(-4,4)])
+        config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL])
+    
+    return config
+
+def test_best_trial(result, metric, mode):
+    best_trial = result.get_best_trial(metric, mode, "last")
     best_trial.config["stack"] = stack
     best_trial.config["noise"] = training_noise
-    best_trial.config["noise_probability"] = 0.5
+    best_trial.config["noise_probability"] = training_noise_probability
     best_trial.config["metric"] = metric
     best_trial.config["target_metric"] = target_metric
     best_trial.config["loss"] = best_trial.last_result['loss'].item()
@@ -296,12 +316,20 @@ def test_best_trial(result, metric, mode, scope):
         with open(data_path, "rb") as fp:
             best_checkpoint_data = pickle.load(fp)
 
-        test(best_trial.config, best_checkpoint_data, scope)   
+        test(best_trial.config, best_checkpoint_data)   
 
 def main(data_dir):
     config = get_config()
 
     load_data()
+
+    scheduler = ASHAScheduler(
+        metric=target_metric,
+        mode="min",
+        max_t=10,
+        grace_period=1,
+        reduction_factor=2
+    ) 
 
     result: Any | None
 
@@ -316,7 +344,7 @@ def main(data_dir):
     except:
         print("error")
 
-    test_best_trial(result, metric="loss", mode="min", scope="last-10-avg")  
+    test_best_trial(result, metric="loss", mode="min") 
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:
