@@ -1,5 +1,5 @@
 services:
-  neural-population-layer:
+  fine-tuning:
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,30 +13,4 @@ services:
       - PYTHONPATH=/app/src
       # Prevent Ray from downloading datasets if they already exist
       - TORCH_HOME=/app/data/.torch
-    restart: unless-stopped
-
-  neural-population-layer-gpu:
-    build:
-      context: .
-      dockerfile: Dockerfile.gpu
-    shm_size: '10gb'
-    volumes:
-      # Mount results directory to persist outputs
-      - ./results:/app/results
-      # Mount data directory to use existing datasets (avoids re-downloading)
-      - ./data:/app/data
-    environment:
-      - PYTHONPATH=/app/src
-      # Prevent Ray from downloading datasets if they already exist
-      - TORCH_HOME=/app/data/.torch
-      - NVIDIA_VISIBLE_DEVICES=all
-    # GPU support (requires nvidia-docker)
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     restart: unless-stopped
