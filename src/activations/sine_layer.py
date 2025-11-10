@@ -26,18 +26,12 @@ class SineLayerPopulationActivation(nn.Module):
         x_size = x.size(dim=1)
         x_pos = torch.arange(x_size, device=x.device)
 
-        mask = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.dist)
+        preferred_values = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.dist)
         
-        diff = (x - mask) ** 2
-        norm = torch.sum(x ** 2, dim=-1, keepdim=True) + torch.sum(mask ** 2, dim=-1, keepdim=True)
-
-        match self.norm:
-            case GlobalNorm.MEAN:
-                norm = norm.mean(dim=-2, keepdim=True)
-            case GlobalNorm.SDT:
-                norm = norm.std(dim=-2, keepdim=True)
-
-        a = diff / (norm + self.eps)
+        # diff = (x - preferred_values) ** 2
+        # norm = torch.sum(x ** 2, dim=-1, keepdim=True) + torch.sum(preferred_values ** 2, dim=-1, keepdim=True)
+        # norm = norm.mean(dim=-2, keepdim=True)
+        # a = diff / (norm + self.eps)
         a_norm = a / a.max(dim=-1, keepdim=True).values
         
         return a_norm
