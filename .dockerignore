@@ -1,0 +1,48 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore Python cache files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore results and images (they will be generated in container)
+results/
+images/
+
+# Ignore data directory contents to avoid copying large datasets
+data/
+!data/.gitkeep

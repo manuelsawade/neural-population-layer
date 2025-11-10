@@ -34,4 +34,4 @@ ENV PYTHONPATH="${PYTHONPATH}:/app/src"
 WORKDIR /app/src
 
 # Default command to run the tuner script
-CMD ["python", "tuner_cifar10.py"]
+CMD ["python", "tuner_mnist_concept.py"]

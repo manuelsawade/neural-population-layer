@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 import torch
 import torch.linalg as L
 import torch.nn as nn
@@ -11,23 +11,50 @@ class GlobalNorm(Enum):
     MEAN = 1,
     SDT = 2
 
-class SineLayerPopulationActivation(nn.Module):
-    def __init__(self, freq=16.0, phase=0.0, amp=1.0, dist=Distribution.ZERO_MEAN, norm=GlobalNorm.NONE, grad_phase=False, grad_amp=False):
+class PreferredValueInitializer(StrEnum):
+    SINE_WAVE = "Sine Wave"
+    RANDOM_NORMAL = "Random Normal"
+    RANDOM_UNIFORM = "Random Uniform"
+
+class PreferredValueActivation(nn.Module):
+    def __init__(self, initialized: SineWave | torch.Tensor):
         super().__init__()
-        self.freq = nn.Parameter(torch.tensor(freq))
-        self.phase = nn.Parameter(torch.tensor(phase), requires_grad=grad_phase)
-        self.amp = nn.Parameter(torch.tensor(amp), requires_grad=grad_amp)
-        self.population = SineWave()
-        self.dist = dist
-        self.norm = norm
+        self.preferred_values = initialized
+        self.computed_preference = True if isinstance(initialized, SineWave) else False
         self.eps = 1e-8
 
     def forward(self, x):
-        x_size = x.size(dim=1)
-        x_pos = torch.arange(x_size, device=x.device)
 
-        preferred_values = self.population(self.freq, self.phase, self.amp, x_pos, x_size, self.dist)
-        
+        preferred_values = self.preferred_values() if self.computed_preference else self.preferred_values
+
+        u_mean = x.mean(dim=-1, keepdim=True)
+        v_mean = preferred_values.mean(dim=-1, keepdim=True)
+
+        # Centered vectors
+        u_centered = x - u_mean
+        v_centered = preferred_values - v_mean
+
+        # # Numerator: squared distance between centered vectors
+        # numerator = torch.sum((u_centered - v_centered) ** 2, dim=-1, keepdim=False)
+
+        # # Denominator: sum of squared norms of each centered vector
+        # denominator = torch.sum(u_centered ** 2, dim=-1, keepdim=False) + torch.sum(v_centered ** 2, dim=-1, keepdim=False)
+
+        # # Normalized squared Euclidean distance
+        # dist = 0.5 * numerator / (denominator + self.eps)
+
+
+        denom = torch.sum(u_centered ** 2, dim=-1, keepdim=True) + torch.sum(v_centered ** 2, dim=-1, keepdim=True)
+
+        # Numerator: per-element squared difference between centered values
+        num = (u_centered - v_centered) ** 2
+
+        # Normalized squared Euclidean "map"
+        dist_map = 0.5 * num / (denom + self.eps)
+
+
+        return dist_map
+
         # diff = (x - preferred_values) ** 2
         # norm = torch.sum(x ** 2, dim=-1, keepdim=True) + torch.sum(preferred_values ** 2, dim=-1, keepdim=True)
         # norm = norm.mean(dim=-2, keepdim=True)

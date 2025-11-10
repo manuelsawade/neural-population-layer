@@ -80,21 +80,20 @@ class Distribution(Enum):
     ZERO_BASE = 1,
 
 class SineWave(nn.Module):
-    def __init__(self, freq, phase, amp, x_pos, x_size, dist=Distribution.ZERO_MEAN, requires_grad=False):
+    def __init__(self, size, freq, phase, amp, dist=Distribution.ZERO_MEAN, requires_grad=False):
         super().__init__()
-        self.freq = freq,
-        self.phase = nn.Parameter(phase, requires_grad=requires_grad)
-        self.amp = nn.Parameter(amp, requires_grad=requires_grad)
-        self.distribution = dist
+        self.freq = freq
+        self.phase = nn.Parameter(torch.tensor(phase), requires_grad=requires_grad)
+        self.amp = nn.Parameter(torch.tensor(amp), requires_grad=requires_grad)
+        self.distribution = dist,
+        self.size = size
+        self.positions = torch.arange(size)
 
-    def forward(self, x):
-        x_size = x.size(dim=1)
-        x_pos = torch.arange(x_size)
-
-        if self.dist == Distribution.ZERO_MEAN: 
-            return self._sine(self.freq, self.phase, self.amp, x_pos, x_size)
+    def __call__(self):
+        if self.distribution == Distribution.ZERO_MEAN: 
+            return self._sine(self.freq, self.phase, self.amp, self.positions, self.size)
         
-        return self._sine_base(self.freq, self.phase, self.amp, x_pos, x_size)
+        return self._sine_base(self.freq, self.phase, self.amp, self.positions, self.size)
         
 
     def _sine(self, freq, phase, amp, x_pos, x_size): 
