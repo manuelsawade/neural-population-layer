@@ -401,7 +401,9 @@ FodyWeavers.xsd
 
 LC25000/
 images/
-experiments
+!experiments/mnist_evaluation
+!experiments/cifar10_evaluation
+experiments_archive
 results
 
 data/cifar-10-batches-py/
