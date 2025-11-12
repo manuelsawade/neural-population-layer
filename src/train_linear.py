@@ -13,10 +13,9 @@ from datasets.cifar10 import CIFAR10
 date_time = datetime.now()
 
 identifier = "mnist_evaluation"
-path = "./experiments/mnist_evaluation/tuning/"
+path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)
-records = []
 for p in sorted(folder_path.glob("linear*.json")):
     print("load file:", p)
     try:

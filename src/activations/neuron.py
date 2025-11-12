@@ -4,19 +4,19 @@ import torch.nn as nn
 from torch import Tensor
 
 from decoder import WeightedAverageDecoder
-from populations import CircularPopulationBase, PopulationBase, TuningCurve
+from populations import PopulationBase, TuningCurve
 
 class PreferredStimulus(StrEnum):
     RAND_NORMAL = 'RAND_NORMAL',
     RAND_UNIFORM = 'RAND_UNIFORM',
     LINEAR = 'LINEAR',
-    COSINE = 'COSINE'
 
 class NeuronPopulation(nn.Module):
+    
     def __init__(
             self, 
             input_dim, 
-            activation: PopulationBase | CircularPopulationBase = TuningCurve(readout=WeightedAverageDecoder()),
+            activation: PopulationBase = TuningCurve(readout=WeightedAverageDecoder()),
             sigma=0.5, 
             stimulus=PreferredStimulus.LINEAR,
             neurons = 10,
@@ -41,8 +41,6 @@ class NeuronPopulation(nn.Module):
                 nn.init.uniform_(self.mu, orientation[0], orientation[1])
             case PreferredStimulus.LINEAR: 
                 self.mu = nn.Parameter(torch.linspace(orientation[0], orientation[1], steps=neurons).unsqueeze(0).repeat(input_dim, 1))#.unsqueeze(0).repeat(input_dim, 1))
-            case PreferredStimulus.COSINE:
-                self.mu = nn.Parameter(self._cosine_spacing(neurons, orientation))
 
         self.mu.requires_grad = True
     

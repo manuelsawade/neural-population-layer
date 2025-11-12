@@ -24,7 +24,7 @@ import torchvision
 from activations.neuron import NeuronPopulation, PreferredStimulus
 from decoder import WeightedAverageDecoder
 from populations import TuningCurve
-from tuner_data_transforms import add_noise, clamp_transform
+from tuner_data_transforms import add_noise, clamp_transform 
 
 date_time = datetime.now()
 
@@ -37,7 +37,7 @@ stack = "population"
 target_metric = "fsa_inf_std"
 target_mode="min"
 
-training_noise=1.0
+training_noise=0.0
 
 scheduler = ASHAScheduler(
     metric=target_metric,
@@ -49,10 +49,10 @@ scheduler = ASHAScheduler(
 
 def get_config():
     config = {
-        "lr": tune.loguniform(1e-4, 1e-1),
-        "weight_decay": tune.loguniform(1e-6, 1e-2),
-        "batch_size": tune.choice([32, 64, 128, 256]),
-        "hidden_dim": tune.choice([128, 256, 512]),
+        "lr": tune.loguniform(1e-9, 1e-6),
+        "weight_decay": tune.loguniform(1e-4, 1e-2),
+        "batch_size": tune.choice([4, 8, 16]),
+        "hidden_dim": tune.choice([128, 256]),
     }
     
     if stack == "population":
@@ -317,9 +317,7 @@ def main(data_dir):
         print("error")
 
     test_best_trial(result, metric="loss", mode="min", scope="last") 
-    test_best_trial(result, metric="loss", mode="min", scope="last-5-avg") 
     test_best_trial(result, metric="loss", mode="min", scope="last-10-avg") 
-    test_best_trial(result, metric="loss", mode="min", scope="all") 
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:

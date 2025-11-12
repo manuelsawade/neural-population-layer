@@ -6,16 +6,16 @@ import torch.nn.functional as F
 from populations import MexicanHat
 
 class DynamicPopulation(nn.Module):
-    def __init__(self, alpha=100.0, sigma=32.0):
+    def __init__(self, alpha=100.0, sigma=32.0, requires_grad=False):
         super().__init__()
-        self.alpha = alpha
-        self.sigma = sigma
+        self.alpha = nn.Parameter(torch.tensor(alpha), requires_grad=requires_grad)
+        self.sigma = nn.Parameter(torch.tensor(sigma), requires_grad=requires_grad)
         self.population = MexicanHat()
 
     def forward(self, x):
         p = F.softmax(self.alpha * x, dim=1)
 
-        positions = torch.arange(x.size(dim=1), device=x.device).float().unsqueeze(0)
+        positions = torch.arange(x.size(dim=1)).float().unsqueeze(0)
         mu = torch.sum(p * positions, dim=1, keepdim=True)
        
         mask = self.population.activate(x=positions, mu=mu, sigma=self.sigma)

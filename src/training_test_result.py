@@ -70,7 +70,7 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 def main():
-    identifier = "cifar10_evaluation"
+    identifier = "mnist_evaluation"
     folder = f"./experiments/{identifier}/"
 
     ignore = ["neurons", "orientation", "activation", "stimulus", "sigma", "sharpness_scores", "activation_scores", "dataset", "noise_sensitivity", "seed", "created_on", "fsd_2", "fsa_2", "fsd_inf", "hidden_dim", "test_noise", "batch_size", "learning_rate", "weight_decay", "epochs", "subset"]

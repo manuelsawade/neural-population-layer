@@ -29,24 +29,25 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
             print(f"Skipping {p} (could not read): {e}")
             continue
         
-        for r in raw:
-            record: Dict[str, Any] = {}
-            for k, v in r.items():
-                if k in ignore: continue
 
-                if isinstance(v, list):
-                    record[k] = "_".join(map(str, v))
-                else:
-                    record[k] = v
+        record: Dict[str, Any] = {}
+        for k, v in raw.items():
+            if k in ignore: continue
 
-            records.append(record)
+            if isinstance(v, list):
+                record[k] = "_".join(map(str, v))
+            else:
+                record[k] = v
+
+        records.append(record)
 
     if not records:
         raise RuntimeError(f"No JSON files loaded from {folder}")
     return pd.DataFrame.from_records(records)
 
 def main():
-    folder = f"./tuning/"
+    identifier = "mnist_evaluation"
+    folder = f"./experiments/{identifier}/tuning"
 
     ignore = ["noise_probability", "lr", "sigma", "weight_decay", "batch_size", "orientation", "neurons", "stimulus", "metric"]
 
@@ -150,7 +151,7 @@ def main():
 
     # Layout and save
     plt.tight_layout()
-    plt.savefig(f"{folder}performance_vs_noise_all_metrics.png", dpi=300)
+    plt.savefig(f"{folder}{identifier}_tuning_performance.png", dpi=300)
     plt.close(fig)
 
     print("Figure saved as performance_vs_noise_all_metrics.png")

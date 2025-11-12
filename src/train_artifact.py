@@ -3,6 +3,7 @@ from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor
 import itertools
 import json
+from pathlib import Path
 import random
 
 import torch
@@ -16,11 +17,15 @@ from training.training import NeuronPopulationParameter, NeuronPopulationTrainin
 
 date_time = datetime.now()
 
-identifier = "cifar10_v3_0"
+identifier = "mnist_evaluation"
+path = "./experiments/mnist_evaluation/tuning/"
 
-try:
-    with open("./experiments/tuning/population_last-5-avg_cifar10_evaluation_2025_11_10_20_37_06.json", "r") as f:
-        tuning_result = json.loads(f.read())
+folder_path = Path(path)
+for p in sorted(folder_path.glob("population*.json")):
+    print("load file:", p)
+    try:
+        with open(p, "r") as f:
+            tuning_result = json.loads(f.read())
 
         for i in range(1):
             seed = random.randint(1000000, 9999999)
@@ -29,7 +34,7 @@ try:
             population_training = NeuronPopulationTraining(
                 hyper_parameter=NeuronPopulationParameter(
                     stack="population",
-                    dataset=CIFAR10(),
+                    dataset=MNIST(),
                     hidden_dim=tuning_result["hidden_dim"],
                     training_noise=tuning_result["noise"],
                     test_noise=0.2,
@@ -50,5 +55,5 @@ try:
 
             population_training.run()
 
-except Exception as e:
-    print(f"could not read: {e}")
+    except Exception as e:
+        print(f"could not read: {e}")
