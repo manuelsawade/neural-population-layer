@@ -23,7 +23,7 @@ class PopulationBase(nn.Module):
 class CircularPopulationBase(nn.Module):
     name: str = ""
 
-    def __init__(self, readout):
+    def __init__(self, readout = None):
         super().__init__()
         self.readout = readout
 

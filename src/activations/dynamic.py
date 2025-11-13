@@ -1,27 +1,28 @@
+from enum import StrEnum
 import torch
 import torch.linalg as L
 import torch.nn as nn
 import torch.nn.functional as F
 
-from populations import MexicanHat
+from populations import MexicanHat, TuningCurve
 
-class DynamicPopulation(nn.Module):
-    def __init__(self, alpha=100.0, sigma=32.0, requires_grad=False):
+class Gaussian(StrEnum):
+    TuningCurve = "tuning_curve",
+    MexicanHat = "mexican_hat"
+
+class SoftmaxGaussianActivation(nn.Module):
+    def __init__(self, activation: MexicanHat | TuningCurve, alpha=10.0, sigma=0.2, normalize=True):
         super().__init__()
-        self.alpha = nn.Parameter(torch.tensor(alpha), requires_grad=requires_grad)
-        self.sigma = nn.Parameter(torch.tensor(sigma), requires_grad=requires_grad)
-        self.population = MexicanHat()
+        self.alpha = nn.Parameter(torch.tensor(alpha), requires_grad=False)
+        self.sigma = nn.Parameter(torch.tensor(sigma), requires_grad=False)
+        self.activation = activation
+        self.normalize = normalize
 
     def forward(self, x):
-        p = F.softmax(self.alpha * x, dim=1)
+        if self.normalize:
+            x = F.normalize(x, p=float("inf"))
 
-        positions = torch.arange(x.size(dim=1)).float().unsqueeze(0)
-        mu = torch.sum(p * positions, dim=1, keepdim=True)
-       
-        mask = self.population.activate(x=positions, mu=mu, sigma=self.sigma)
-        mask = mask / mask.max(dim=-1, keepdim=True).values
+        p = F.softmax(self.alpha * x, dim=1)      
+        output = self.activation.activation(x=x, mu=p, sigma=self.sigma)
         
-        a_norm = x / x.max(dim=-1, keepdim=True).values       
-        masked_a = x + (mask - a_norm)
-        
-        return masked_a
+        return output 

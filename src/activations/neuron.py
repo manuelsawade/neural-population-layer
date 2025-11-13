@@ -21,6 +21,7 @@ class NeuronPopulation(nn.Module):
             stimulus=PreferredStimulus.LINEAR,
             neurons = 10,
             orientation: tuple[float, float] = (-0.5, 0.5),
+            encoded_output=False
             ):
         super().__init__()
         self.input_dim = input_dim
@@ -29,6 +30,7 @@ class NeuronPopulation(nn.Module):
         self.orientation = orientation
         self.activation = activation
         self.pop_out: torch.Tensor | None = None
+        self.encoded_output = encoded_output
 
         match stimulus:
             case PreferredStimulus.RAND_NORMAL: 
@@ -50,6 +52,8 @@ class NeuronPopulation(nn.Module):
         sigma = torch.exp(self.log_sigma).unsqueeze(0)
         
         encoded, decoded = self.activation(x_expanded, mu, sigma, self.orientation)
+        if self.encoded_output:
+            return encoded
             
         self.pop_out = encoded.view(x.size(0), self.input_dim * self.neurons).detach()
         return decoded

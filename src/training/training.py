@@ -10,8 +10,9 @@ import torch.nn as nn
 from activations.neuron import NeuronPopulation, PreferredStimulus
 from datasets.base import Dataset
 from networks import NeuralNetwork
-from populations import CircularPopulationBase, Distribution, PopulationBase, SineWave
+from populations import CircularPopulationBase, Distribution, MexicanHat, PopulationBase, SineWave, TuningCurve
 from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
+from activations.dynamic import SoftmaxGaussianActivation
 from trainer import Trainer
 
 @dataclass
@@ -97,7 +98,23 @@ class PreferredValueParameter(HyperParameter):
     def get_output_file(self):
         return "_".join([super().get_output_file(), str(self.freq), str(self.phase), str(self.amp), str(self.dist), str(self.requires_grad)]).replace(" ", "").replace(",", "_").replace(".", "_")
 
-        
+@dataclass
+class SoftmaxGaussianParameter(HyperParameter):
+    activation: TuningCurve | MexicanHat 
+    sigma: float 
+    alpha: float
+    normalize: bool
+
+    def toDict(self):
+        dict = super().toDict()
+        dict["activation"] = self.activation
+        dict["sigma"] = self.sigma
+        dict["alpha"] = self.alpha
+        dict["normalize"] = self.normalize
+        return dict
+
+    def get_output_file(self):
+        return "_".join([super().get_output_file(), str(self.activation.name), str(self.sigma), str(self.alpha), str(self.normalize)]).replace(" ", "").replace(",", "_").replace(".", "_")   
 
 @dataclass
 class TrainingBase:
@@ -189,6 +206,22 @@ class PreferredValueTraining(TrainingBase):
             PreferredValueActivation(initialized=preference), 
             nn.LazyLinear(self.hyper_parameter.dataset.output_dim),  
             )
+
+        self.run_stack(stack)
+
+class SoftmaxGaussianTraining(TrainingBase):
+    hyper_parameter: SoftmaxGaussianParameter
+    network = "softmax_gaussian"
+
+    def run(self):
+        stack = nn.Sequential(
+            nn.Linear(self.hyper_parameter.dataset.input_dim, self.hyper_parameter.hidden_dim),
+            SoftmaxGaussianActivation(
+                activation=self.hyper_parameter.activation, 
+                alpha=self.hyper_parameter.alpha, 
+                sigma=self.hyper_parameter.sigma, 
+                normalize=self.hyper_parameter.normalize), 
+            nn.LazyLinear(self.hyper_parameter.dataset.output_dim))
 
         self.run_stack(stack)
 

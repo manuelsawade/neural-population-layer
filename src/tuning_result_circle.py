@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from display_names import get_display_name
+
 
 def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
     folder_path = Path(folder)
@@ -47,12 +49,17 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 def main():
-    identifier = "mnist_evaluation_preferred_value"
+    population_stack = "population"
+    #population_stack = "preferred_value"
+    #population_stack = "softmax_gaussian"
+    dataset = "mnist"
+    
+    
+    identifier = f"{dataset}_evaluation_{population_stack}"
     #identifier = "mnist_evaluation"
     folder = f"./experiments/{identifier}/tuning/"
 
     linear_stack = "linear"
-    population_stack = "population"
 
     ignore = ["initializer", "requires_grad", "noise_probability", "lr", "freq", "weight_decay", "batch_size", "phase", "amp", "distribution", "metric"]
 
@@ -60,7 +67,7 @@ def main():
     df = load_json_files(folder, ignore)
     print(f"Loaded {len(df)} records.")
 
-    df = df.loc[df['target_metric'] == 'fsa_inf_std']
+    df = df.loc[df['target_metric'] == 'fsa_inf_mean_diff']
 
     global_loss = df[['loss', 'test_loss']].values.flatten()
     global_min = global_loss.min()
@@ -77,10 +84,10 @@ def main():
 
     fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True, sharey=True)
     fig.supxlabel('Noise Level', y=0.05)
-    fig.suptitle("Tuning on MNIST", y=0.97)
+    fig.suptitle(f"Tuning Evaluation of {get_display_name(population_stack)} Stack on {get_display_name(dataset)} Dataset", y=0.97)
 
-    axes[0][0].set_ylabel("Linear Network")
-    axes[1][0].set_ylabel("Population Network")
+    axes[0][0].set_ylabel(get_display_name(linear_stack))
+    axes[1][0].set_ylabel(get_display_name(population_stack))
 
     color_map = {
         linear_stack: {
@@ -180,8 +187,6 @@ def main():
     plt.tight_layout()
     plt.savefig(f"{folder}{identifier}_training_test_performance.png", dpi=300)
     plt.close(fig)
-
-    print("Figure saved as performance_vs_noise_all_metrics.png")
     
 
 
