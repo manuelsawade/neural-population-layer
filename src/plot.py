@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from matplotlib import pyplot as plt
 from datasets.mnist import MNIST
@@ -18,7 +19,7 @@ def plot_mnist_sample():
     plt.axis('off')
     plt.show()
 
-def plot_smooth_tensor(ax, tensor):
+def plot_smooth_tensor(ax, tensor, color="blue", title=""):
     tensor_size = tensor.size(dim=-1)
     # print(tensor_size)
     # print(torch.arange(tensor_size).float().numpy())
@@ -28,10 +29,11 @@ def plot_smooth_tensor(ax, tensor):
     
     spline = make_interp_spline(neurons, tensor.numpy())
 
-    X = np.linspace(neurons.min(), neurons.max(), 500)
+    X = np.linspace(neurons.min(), neurons.max(), 16)
     Y = spline(X)
 
-    ax.plot(X, Y)
+    ax.plot(X, Y, color=color)
+    ax.set_title(title)
 
 def plot_oscillatory_population():
     freq = 4.0
@@ -48,7 +50,7 @@ def plot_oscillatory_population():
     x_size = x.size(dim=1)
     #x_norm = x / x.max(dim=-1, keepdim=True).values
 
-    plot_smooth_tensor(axs[0], x.squeeze())
+    plot_smooth_tensor(axs[0], x.squeeze(), title="x")
 
     positions = torch.arange(x_size).float()
 
@@ -73,6 +75,57 @@ def plot_oscillatory_population():
     # print(f' out: {masked}')
     plot_smooth_tensor(axs[3], masked.squeeze())
     plt.show()
+
+def plot_dynamic_population():
+    neurons = 100
+    
+    torch.manual_seed(1997)
+    alpha = 1.0
+    sigma = 0.5
+
+    fig = plt.figure(figsize=(6, 6))
+    gs = fig.add_gridspec(3, hspace=0.5)
+    axs = gs.subplots()
+    axs[0].set_title('Input')
+    
+    x = torch.randn(1, neurons)
+    print("x", x)
+    plot_smooth_tensor(axs[0], x.squeeze(), title="x")  # Example input
+    
+    p = F.softmax(alpha * x, dim=1)
+    #p = (p + 1e-8) / p.max(dim=-1, keepdim=True).values
+    print("p", p)
+    plot_smooth_tensor(axs[1], p.squeeze(), title="softmax") 
+
+    positions = torch.arange(x.size(dim=1)).unsqueeze(0)
+    print("pos", positions)
+    #mu = torch.sum(p * positions, keepdim=True, dim=-2)
+    mu = torch.sum(p * positions, dim=1, keepdim=True)
+    #mu = 2 * mu - 1
+    #plot_smooth_tensor(axs[2], mu, title="mu") 
+    print("mu", mu)
+
+    #mask = (1 - ((x - mu) / sigma) ** 2) * torch.exp(-0.5 * ((x - mu) / sigma) ** 2)
+    mask = torch.exp(-0.5 * ((x - p) / sigma) ** 2)
+    #plot_smooth_tensor(axs[2], mask.squeeze(), title="dist")
+    print("mask", mask) 
+
+    mask_norm = (mask + 1e-8) / mask.max(dim=-1, keepdim=True).values
+    #mask_norm = 2 * mask_norm - 1
+    print("dist_norm", mask_norm)
+    plot_smooth_tensor(axs[2], mask_norm.squeeze(), color="purple") 
+    plot_smooth_tensor(axs[2], x.squeeze(), color="blue", title="dist_norm") 
+
+    #a_norm = x / x.max(dim=-1, keepdim=True).values  
+    #plot_smooth_tensor(axs[4], a_norm.squeeze(), title="x_norm")   
+
+    masked_a = (x + (mask_norm - x))
+    #masked_a = mask_norm * a_norm
+    # print("out", masked_a)
+    # plot_smooth_tensor(axs[3], masked_a.squeeze(), color="red") 
+    # plot_smooth_tensor(axs[3], x.squeeze(), title="x + (dist - x_norm)") 
+    #plt.tight_layout()
+    plt.savefig("dynamic_population.png")
 
 def plot_fixed_population():
     fig = plt.figure(figsize=(8, 6))
@@ -139,4 +192,5 @@ def sine(freq, phase, amp, x_pos, x_size):
 
 #plot_mnist_sample()
 #plot_oscillatory_population()
-plot_fixed_population()
+#plot_fixed_population()
+plot_dynamic_population()

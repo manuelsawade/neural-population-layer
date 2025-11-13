@@ -47,8 +47,7 @@ def load_csv_files(folder: str) -> pd.DataFrame:
     return pd.concat(dataframes)
 
 def main():
-    #folder = "./experiments/cifar10_evaluation/"
-    identifier = "mnist_evaluation"
+    identifier = "mnist_evaluation_preferred_value"
     folder = f"./experiments/{identifier}/"
     print("Loading JSON files...")
     df = load_csv_files(folder)

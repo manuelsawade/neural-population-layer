@@ -23,8 +23,8 @@ import torchvision
 
 from activations.neuron import NeuronPopulation, PreferredStimulus
 from decoder import WeightedAverageDecoder
-from populations import Distribution, TuningCurve
-from src.activations.sine_layer import PreferredValueActivation
+from populations import Distribution, SineWave, TuningCurve
+from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
 from tuner_data_transforms import add_noise, clamp_transform
 
 date_time = datetime.now()
@@ -38,7 +38,7 @@ stack = "preferred_value"
 target_metric = "fsa_inf_std"
 target_mode="min"
 
-training_noise=0.0
+training_noise=1.0
 
 scheduler = ASHAScheduler(
     metric=target_metric,
@@ -50,10 +50,10 @@ scheduler = ASHAScheduler(
 
 def get_config():
     config = {
-        "lr": tune.loguniform(1e-4, 1e-1),
-        "weight_decay": tune.loguniform(1e-6, 1e-2),
-        "batch_size": tune.choice([32, 64, 128, 256]),
-        "hidden_dim": tune.choice([128, 256, 512]),
+        "lr": tune.loguniform(1e-9, 1e-6),
+        "weight_decay": tune.loguniform(1e-4, 1e-2),
+        "batch_size": tune.choice([4, 8, 16]),
+        "hidden_dim": tune.choice([128, 256]),
     }
     
     if stack == "preferred_value":
@@ -61,6 +61,10 @@ def get_config():
         config["phase"] = tune.loguniform(0.5, 1.5)
         config["amp"] = tune.choice([0.5, 1.0, 1.5])
         config["distribution"] = tune.choice([Distribution.ZERO_MEAN, Distribution.ZERO_BASE])
+        config["initializer"] = tune.choice([
+            PreferredValueInitializer.SINE_WAVE, 
+            PreferredValueInitializer.RANDOM_NORMAL, 
+            PreferredValueInitializer.RANDOM_UNIFORM])
         config["requires_grad"] = tune.choice([True, False])
     
     return config
@@ -92,15 +96,24 @@ def load_data():
 
 def get_stack(config):
     if stack == "preferred_value":
+        match config["initializer"]:
+            case PreferredValueInitializer.SINE_WAVE:
+                preference = SineWave(
+                    config["hidden_dim"], 
+                    freq=config["freq"],
+                    phase=config["phase"],
+                    amp=config["amp"],
+                    dist=config["distribution"],
+                    requires_grad=config["requires_grad"]
+                )
+            case PreferredValueInitializer.RANDOM_NORMAL:
+                preference = torch.randn(config["hidden_dim"])
+            case PreferredValueInitializer.RANDOM_UNIFORM:
+                preference = torch.rand(config["hidden_dim"])
+
         return nn.Sequential(
             nn.Linear(input_dim, config["hidden_dim"]),
-            PreferredValueActivation(             
-                config["hidden_dim"], 
-                freq=config["freq"],
-                phase=config["phase"],
-                amp=config["amp"],
-                distribution=config["distribution"],
-                requires_grad=config["requires_grad"]),
+            PreferredValueActivation(initialized=preference),
             nn.LazyLinear(output_dim),     
             )
 
@@ -261,6 +274,10 @@ def test(config, checkpoint_data, scope):
     if copy.get("distribution") is not None:
         copy["distribution"] = copy["distribution"].name
 
+    if copy["initializer"] != PreferredValueInitializer.SINE_WAVE:
+        for remove in ["freq","phase","amp","distribution","requires_grad"]:
+            del copy[remove]
+
     roby_scores = OrderedDict(sorted(roby_scores.items()))
     for param in roby_scores:
         mean = sum(roby_scores[param]) / len(roby_scores[param])
@@ -284,7 +301,6 @@ def test_best_trial(result, metric, mode, scope):
     best_trial = result.get_best_trial(metric, mode, scope)
     best_trial.config["stack"] = stack
     best_trial.config["noise"] = training_noise
-    best_trial.config["noise_probability"] = 0.5
     best_trial.config["metric"] = metric
     best_trial.config["target_metric"] = target_metric
     best_trial.config["loss"] = best_trial.last_result['loss'].item()

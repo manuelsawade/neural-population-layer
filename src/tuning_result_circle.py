@@ -48,7 +48,11 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
 
 def main():
     identifier = "mnist_evaluation_preferred_value"
-    folder = f"./experiments/{identifier}/"
+    #identifier = "mnist_evaluation"
+    folder = f"./experiments/{identifier}/tuning/"
+
+    linear_stack = "linear"
+    population_stack = "population"
 
     ignore = ["initializer", "requires_grad", "noise_probability", "lr", "freq", "weight_decay", "batch_size", "phase", "amp", "distribution", "metric"]
 
@@ -68,16 +72,18 @@ def main():
 
     df["test_accuracy"]=df["test_accuracy"] / 100
 
-    metrics = ["accuracy", "loss", "fsa_inf_mean"]
-
-    stacks = ["linear", "preferred_value"]
+    stacks = [linear_stack, population_stack]
     metric_map = [["accuracy", "test_accuracy"], ["loss", "test_loss"], ["fsa_inf_mean", "test_fsa_inf_mean"]]
 
-    fig, axes = plt.subplots(2, 3, figsize=(10, 4), sharex=True, sharey=True)
-    fig.supxlabel('Noise Level')
+    fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True, sharey=True)
+    fig.supxlabel('Noise Level', y=0.05)
+    fig.suptitle("Tuning on MNIST", y=0.97)
+
+    axes[0][0].set_ylabel("Linear Network")
+    axes[1][0].set_ylabel("Population Network")
 
     color_map = {
-        "linear": {
+        linear_stack: {
             1: {
                 "stage":"test",
                 "color":"purple"
@@ -87,7 +93,7 @@ def main():
                 "color":"orange"
             }
         },
-        "preferred_value": {
+        population_stack: {
             1: {
                 "stage":"test",
                 "color":"purple"
@@ -102,6 +108,8 @@ def main():
 
     train_label: str | None = None
     test_label: str | None = None
+
+    difference_label = "difference"
 
     for row_axes, stacks in zip(axes, stacks):
         for ax, metrics in zip(row_axes, metric_map):
@@ -134,15 +142,25 @@ def main():
                 train_val = subset[metrics[0]].values              
                 test_val = subset[metrics[1]].values
 
-                print(split_df[1]) 
                 
                 if len(train_val) and len(test_val):
-                    ax.plot([noise, noise], [train_val[i], test_val[i]],
-                            color='black', linestyle=':', alpha=0.8, linewidth=3)
+                    diff = abs(train_val[i] - test_val[i])
+                    y_mid = (train_val[i] + test_val[i]) / 2
+                    print(diff, y_mid)
+
+                    # Circle size scales with difference magnitude
+                    base_size = 10
+                    size = diff * 1000 * ((1 + diff) ** 1.5)
+                    cmap = plt.cm.get_cmap("Greys")
+                    #color = cmap(diff * 1.5) # normalized to [0,1]
+
+                    ax.scatter(noise, y_mid, s=size, color="black", alpha=0.6, zorder=5, label=difference_label)
+                    difference_label = ""
 
             ax.set_ylim(0.0, 1.0)
             ax.set_xticks([0, 0.5, 1.0])
-            if stacks in "linear":            
+            ax.set_xlim(-0.2, 1.2)
+            if stacks in linear_stack:            
                 if metrics[0] == "accuracy":
                     ax.set_title("Accuracy")
 
@@ -155,12 +173,9 @@ def main():
 
             ax.grid(True, linestyle=":", alpha=0.6)
 
-    # # Add legend to the first subplot only (to avoid clutter)
-    axes[0][0].set_ylabel("Linear Network")
-    axes[1][0].set_ylabel("Population Network")
-    fig.legend(loc="outside upper left", prop={'size': 10})
-    fig.suptitle("Train-Test-Difference")
 
+    # # Add legend to the first subplot only (to avoid clutter)
+    fig.legend(loc="outside lower right", prop={'size': 9}, ncol=2)
     # Layout and save
     plt.tight_layout()
     plt.savefig(f"{folder}{identifier}_training_test_performance.png", dpi=300)

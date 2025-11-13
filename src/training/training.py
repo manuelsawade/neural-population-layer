@@ -3,13 +3,15 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+from torch import Tensor
+import torch
 import torch.nn as nn
 
 from activations.neuron import NeuronPopulation, PreferredStimulus
 from datasets.base import Dataset
 from networks import NeuralNetwork
 from populations import CircularPopulationBase, Distribution, PopulationBase, SineWave
-from activations.sine_layer import PreferredValueActivation
+from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
 from trainer import Trainer
 
 @dataclass
@@ -80,7 +82,8 @@ class PreferredValueParameter(HyperParameter):
     phase: int | None
     amp: float | None
     dist: Distribution | None
-    requires_grad: bool = False
+    init: PreferredValueInitializer | None
+    requires_grad: bool | None = False
 
     def toDict(self):
         dict = super().toDict()
@@ -156,17 +159,34 @@ class PreferredValueTraining(TrainingBase):
     network = "preferred_population"
 
     def run(self):
-        stack = nn.Sequential(
-            nn.Linear(self.hyper_parameter.dataset.input_dim, self.hyper_parameter.hidden_dim),
-            PreferredValueActivation(
-                initialized=SineWave(
+        preference: SineWave | Tensor
+
+        match self.hyper_parameter.init:
+            case PreferredValueInitializer.SINE_WAVE:
+                preference = SineWave(
                     size=self.hyper_parameter.hidden_dim,
                     freq=self.hyper_parameter.freq,
                     phase=self.hyper_parameter.phase,
                     amp=self.hyper_parameter.amp,
                     dist=self.hyper_parameter.dist,
                     requires_grad=self.hyper_parameter.requires_grad
-            )), 
+                )
+            case PreferredValueInitializer.RANDOM_NORMAL:
+                preference = torch.randn(self.hyper_parameter.hidden_dim)
+            case PreferredValueInitializer.RANDOM_UNIFORM:
+                preference = torch.rand(self.hyper_parameter.hidden_dim)
+
+        if not self.hyper_parameter.init == PreferredValueInitializer.SINE_WAVE:
+            self.hyper_parameter.hidden_dim = None
+            self.hyper_parameter.freq = None
+            self.hyper_parameter.phase = None
+            self.hyper_parameter.amp = None
+            self.hyper_parameter.dist = None
+            self.hyper_parameter.requires_grad = None
+
+        stack = nn.Sequential(
+            nn.Linear(self.hyper_parameter.dataset.input_dim, self.hyper_parameter.hidden_dim),
+            PreferredValueActivation(initialized=preference), 
             nn.LazyLinear(self.hyper_parameter.dataset.output_dim),  
             )
 

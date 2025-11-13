@@ -14,6 +14,10 @@ from ray import tune
 from ray.tune import Checkpoint, get_checkpoint
 import ray.cloudpickle as pickle
 from ray.tune.schedulers import ASHAScheduler
+from ray.tune.search.bohb import TuneBOHB
+from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
+from ray.tune.search import ConcurrencyLimiter
+from ray.exceptions import RayError
 
 from metrics.roby import roby_metric
 from torchvision.transforms import ToTensor
@@ -37,31 +41,36 @@ stack = "population"
 target_metric = "fsa_inf_std"
 target_mode="min"
 
-training_noise=0.0
-
-scheduler = ASHAScheduler(
-    metric=target_metric,
-    mode=target_mode,
-    max_t=50,        
-    grace_period=4,
-    reduction_factor=2
-) 
-
 def get_config():
     config = {
         "lr": tune.loguniform(1e-9, 1e-6),
         "weight_decay": tune.loguniform(1e-4, 1e-2),
-        "batch_size": tune.choice([4, 8, 16]),
+        "batch_size": tune.choice([16, 32]),
         "hidden_dim": tune.choice([128, 256]),
     }
     
     if stack == "population":
         config["sigma"] = tune.loguniform(0.5, 1.5)
-        config["neurons"] = tune.choice([12, 14, 16, 18])
+        config["neurons"] = tune.choice([8, 12, 16])
         config["orientation"] = tune.choice([(-2,2),(-4,4),(-5,5)])
         config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
     
     return config
+
+training_noise=0.0
+
+scheduler = HyperBandForBOHB(
+    metric=target_metric,
+    mode=target_mode,
+    max_t=50,        
+    reduction_factor=2
+) 
+
+search_alg = ConcurrencyLimiter(TuneBOHB(
+    space=get_config(),
+    metric=target_metric,
+    mode=target_mode
+), max_concurrent=10)
 
 def load_data(): 
     ssl._create_default_https_context = ssl._create_unverified_context 
@@ -282,7 +291,6 @@ def test_best_trial(result, metric, mode, scope):
     best_trial = result.get_best_trial(metric, mode, scope)
     best_trial.config["stack"] = stack
     best_trial.config["noise"] = training_noise
-    best_trial.config["noise_probability"] = 0.5
     best_trial.config["metric"] = metric
     best_trial.config["target_metric"] = target_metric
     best_trial.config["loss"] = best_trial.last_result['loss'].item()
@@ -308,13 +316,13 @@ def main(data_dir):
     try:
         result = tune.run(
             partial(run, data_dir=data_dir),
-            config=config,
+            #config=config,
             num_samples=30,
             scheduler=scheduler,
-            max_concurrent_trials=12,
+            search_alg=search_alg
         )
-    except:
-        print("error")
+    except RayError as e:
+        print(f"error: {e}")
 
     test_best_trial(result, metric="loss", mode="min", scope="last") 
     test_best_trial(result, metric="loss", mode="min", scope="last-10-avg") 
