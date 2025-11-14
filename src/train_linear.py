@@ -12,7 +12,7 @@ from datasets.cifar10 import CIFAR10
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation"
+identifier = "mnist_evaluation_population"
 path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)

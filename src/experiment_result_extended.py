@@ -171,18 +171,13 @@ def plot_per_class(agg: pd.DataFrame,
 
 
 def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("folder", help="Folder with JSON experiment result files")
-    # parser.add_argument("--outdir", default="./plots", help="Output folder for plots")
-    # args = parser.parse_args()
-
-    identifier = "mnist_cifar10_v1_0"
+    identifier = "mnist_evaluation_population"
 
     args = object()
     folder = f"./experiments/{identifier}"
     outdir = f"{folder}_result"
 
-    ignore = ["seed", "created_on", "fsd_2", "fsa_2"]
+    ignore = ["seed", "created_on"]
     class_cols = ["hyp.", "network"]
 
     print("Loading JSON files...")

@@ -54,7 +54,7 @@ class HyperParameter:
         return datetime.strftime("%Y_%m_%d_%H_%M_%S")
     
     def get_output_file(self):
-        return "_".join([self.stack, self.dataset.name, str(self.training_noise), str(self.hidden_dim), str(self.test_noise), str(self.batch_size), str(self.learning_rate), str(self.weight_decay), str(self.epochs), "none" if self.subset is None else str(self.subset), str(self.index), self.identifier]).replace(" ", "").replace(",", "_").replace(".", "_")
+        return "_".join([self.stack, self.dataset.name, str(self.training_noise), str(self.hidden_dim), str(self.test_noise), str(self.batch_size), f"{self.learning_rate:.4f}", f"{self.weight_decay:.4f}", str(self.epochs), "none" if self.subset is None else str(self.subset), str(self.index), self.identifier]).replace(" ", "").replace(",", "_").replace(".", "_")
 
 @dataclass
 class NeuronPopulationParameter(HyperParameter):
@@ -75,7 +75,7 @@ class NeuronPopulationParameter(HyperParameter):
         return dict
     
     def get_output_file(self):
-        return "_".join([super().get_output_file(), str(self.sigma), str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus)]).replace(" ", "").replace(",", "_").replace(".", "_")
+        return "_".join([super().get_output_file(), f"{self.sigma:.4f}", str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus)]).replace(" ", "").replace(",", "_").replace(".", "_")
     
 @dataclass
 class PreferredValueParameter(HyperParameter):

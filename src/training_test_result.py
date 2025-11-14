@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from display_names import get_display_name
+
 def flatten(d: Dict[str, Any], ignore: list[str], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
     """Recursively flatten nested dicts. Convert lists -> tuples for hashability."""
     items: Dict[str, Any] = {}
@@ -70,8 +72,17 @@ def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 def main():
-    identifier = "mnist_evaluation"
+    population_stack = "population"
+    #population_stack = "preferred_value"
+    #population_stack = "softmax_gaussian"
+    dataset = "mnist"
+    
+    
+    identifier = f"{dataset}_evaluation_{population_stack}"
+    #identifier = "mnist_evaluation"
     folder = f"./experiments/{identifier}/"
+
+    linear_stack = "linear"
 
     ignore = ["neurons", "orientation", "activation", "stimulus", "sigma", "sharpness_scores", "activation_scores", "dataset", "noise_sensitivity", "seed", "created_on", "fsd_2", "fsa_2", "fsd_inf", "hidden_dim", "test_noise", "batch_size", "learning_rate", "weight_decay", "epochs", "subset"]
     print("Loading JSON files...")
@@ -84,14 +95,20 @@ def main():
     global_min = global_loss.min()
     global_max = global_loss.max()
 
-    df["train_loss"]=(df["train_loss"] - global_min)/(global_max - global_min)
-    df["avg_loss"]=(df["avg_loss"] - global_min)/(global_max - global_min)
+    # df["train_loss"]=(df["train_loss"] - global_min)/(global_max - global_min)
+    # df["avg_loss"]=(df["avg_loss"] - global_min)/(global_max - global_min)
+
+    df["train_loss"]=(df["train_loss"] - df["train_loss"].min())/(df["train_loss"].max() - df["train_loss"].min())
+    df["avg_loss"]=(df["avg_loss"] - df["avg_loss"].min())/(df["avg_loss"].max() - df["avg_loss"].min())
 
     stacks = ["linear", "population"]
     metric_map = [["train_accuracy", "accuracy"], ["train_loss", "avg_loss"], ["train_fsa_inf_mean", "rub.fsa_inf.mean"]]
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 4), sharex=True)
     fig.supxlabel('Noise Level')
+
+    axes[0][0].set_ylabel(get_display_name(linear_stack))
+    axes[1][0].set_ylabel(get_display_name(population_stack))
 
     color_map = {
         "linear": {
@@ -120,12 +137,14 @@ def main():
     train_label: str | None = None
     test_label: str | None = None
 
+    difference_label = "difference"
+
     for row_axes, stacks in zip(axes, stacks):
         for ax, metrics in zip(row_axes, metric_map):
             subset = df.loc[df['network'] == stacks]
             subset = subset.sort_values(by='hyp.training_noise', ascending=True)
             for i, split_df in enumerate(subset.groupby(metrics)):
-
+                #print(split_df[1])
                 for i, metric in enumerate(metrics):                    
                     label = ""
 
@@ -145,50 +164,44 @@ def main():
                             marker="o", 
                             linewidth=10, 
                             color=color,
-                            label=label)          
+                            label=label)         
 
             for i, noise in enumerate([0.0, 0.5, 1.0]):
                 train_val = subset[metrics[0]].values              
                 test_val = subset[metrics[1]].values
+
                 
                 if len(train_val) and len(test_val):
-                    print(f"line for {stacks} {metrics}", subset)
-                    ax.plot([noise, noise], [train_val[i], test_val[i]],
-                            color='black', linestyle=':', alpha=0.8, linewidth=3)
+                    diff = abs(train_val[i] - test_val[i])
+                    y_mid = (train_val[i] + test_val[i]) / 2
+                    print(diff, y_mid)
 
-            ax.grid(True, linestyle=":", alpha=0.6)
+                    # Circle size scales with difference magnitude
+                    base_size = 10
+                    size = diff * 1000 * ((1 + diff) ** 1.5)
+                    cmap = plt.cm.get_cmap("Greys")
+                    #color = cmap(diff * 1.5) # normalized to [0,1]
 
-            if stacks in "linear":            
-                if metrics[0] == "train_accuracy":
+                    ax.scatter(noise, y_mid, s=size, color="black", alpha=0.6, zorder=5, label=difference_label)
+                    difference_label = ""
+
+            ax.set_ylim(0.0, 1.0)
+            ax.set_xticks([0, 0.5, 1.0])
+            ax.set_xlim(-0.2, 1.2)
+            if stacks in linear_stack:            
+                if metrics[0] == "accuracy":
                     ax.set_title("Accuracy")
-                    ax.set_ylim(0.0, 1.0)
 
-                if metrics[0] == "train_loss":
-                    ax.set_ylim(0.0, 1.0)
+                if metrics[0] == "loss":
                     ax.set_title("Loss (Normalized)")
                 
-                if metrics[0] == "train_fsa_inf_mean":
-                    ax.set_ylim(0.35, 0.56)
+                if metrics[0] == "fsa_inf_mean":
                     ax.set_title("FSA Inf")
-            else:
-                ax.set_xticks([0, 0.5, 1.0])
-                #ax.set_ylim(0, 1)
-                
-                if metrics[0] == "train_accuracy":
-                    ax.set_ylim(0.0, 1.0)
-
-                if metrics[0] == "train_loss":
-                    ax.set_ylim(0.0, 1.0)
-                
-                if metrics[0] == "train_fsa_inf_mean":
-                    ax.set_ylim(0.35, 0.56)
 
 
             ax.grid(True, linestyle=":", alpha=0.6)
 
     # # Add legend to the first subplot only (to avoid clutter)
-    axes[0][0].set_ylabel("Linear Network")
-    axes[1][0].set_ylabel("Population Network")
     fig.legend(loc="outside upper left", prop={'size': 10})
     fig.suptitle("CIFAR10 Train-Test-Difference")
 
