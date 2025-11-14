@@ -62,5 +62,5 @@ def run(p: tuple):
         print(f"could not read: {e}")
 
 if __name__ == '__main__':
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    with ProcessPoolExecutor(max_workers=3) as executor:
         list(executor.map(run, file_paths))
