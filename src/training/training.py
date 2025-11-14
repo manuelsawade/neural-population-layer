@@ -63,6 +63,7 @@ class NeuronPopulationParameter(HyperParameter):
     orientation: tuple[float, float]
     activation: PopulationBase | CircularPopulationBase
     stimulus: PreferredStimulus
+    encoded_output: bool = False
 
     def toDict(self):
         dict = super().toDict()
@@ -71,11 +72,12 @@ class NeuronPopulationParameter(HyperParameter):
         dict["orientation"] = self.orientation
         dict["activation"] = self.activation.name
         dict["stimulus"] = self.stimulus.name
+        dict["encoded_output"] = self.encoded_output
 
         return dict
     
     def get_output_file(self):
-        return "_".join([super().get_output_file(), f"{self.sigma:.4f}", str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus)]).replace(" ", "").replace(",", "_").replace(".", "_")
+        return "_".join([super().get_output_file(), f"{self.sigma:.4f}", str(self.neurons), str(self.orientation), self.activation.name, str(self.stimulus), str(self.encoded_output)]).replace(" ", "").replace(",", "_").replace(".", "_")
     
 @dataclass
 class PreferredValueParameter(HyperParameter):
@@ -157,6 +159,10 @@ class NeuronPopulationTraining(TrainingBase):
     network = "population"
 
     def run(self):
+        if self.hyper_parameter.encoded_output:
+            self.network = "population_encoding"
+
+
         stack = nn.Sequential(
             nn.Linear(self.hyper_parameter.dataset.input_dim, self.hyper_parameter.hidden_dim),
             NeuronPopulation(
@@ -165,7 +171,8 @@ class NeuronPopulationTraining(TrainingBase):
                 neurons=self.hyper_parameter.neurons,
                 orientation=self.hyper_parameter.orientation,
                 activation=self.hyper_parameter.activation,
-                stimulus=self.hyper_parameter.stimulus),
+                stimulus=self.hyper_parameter.stimulus,
+                encoded_output=self.hyper_parameter.encoded_output),
             nn.LazyLinear(self.hyper_parameter.dataset.output_dim),     
             )
 

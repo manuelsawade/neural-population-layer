@@ -53,7 +53,7 @@ class NeuronPopulation(nn.Module):
         
         encoded, decoded = self.activation(x_expanded, mu, sigma, self.orientation)
         if self.encoded_output:
-            return encoded
+            return torch.flatten(encoded, start_dim=1)
             
         self.pop_out = encoded.view(x.size(0), self.input_dim * self.neurons).detach()
         return decoded

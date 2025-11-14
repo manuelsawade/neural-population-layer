@@ -17,11 +17,13 @@ from training.training import NeuronPopulationParameter, NeuronPopulationTrainin
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation_population"
+identifier = "mnist_evaluation_population_encoding"
 path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)
-for p in sorted(folder_path.glob("population*.json")):
+file_paths = sorted(folder_path.glob("population*.json"))
+    
+def run(p: tuple):
     print("load file:", p)
     try:
         with open(p, "r") as f:
@@ -30,10 +32,10 @@ for p in sorted(folder_path.glob("population*.json")):
         for i in range(1):
             seed = random.randint(1000000, 9999999)
             torch.manual_seed(seed)  
-
+            print(tuning_result)
             population_training = NeuronPopulationTraining(
                 hyper_parameter=NeuronPopulationParameter(
-                    stack="population",
+                    stack="population_encoding",
                     dataset=MNIST(),
                     hidden_dim=tuning_result["hidden_dim"],
                     training_noise=tuning_result["noise"],
@@ -51,9 +53,14 @@ for p in sorted(folder_path.glob("population*.json")):
                     subset=None,
                     activation=TuningCurve(readout=WeightedAverageDecoder()),
                     index=i,
-                    identifier=identifier))
+                    identifier=identifier,
+                    encoded_output=True))
 
             population_training.run()
 
     except Exception as e:
         print(f"could not read: {e}")
+
+if __name__ == '__main__':
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        list(executor.map(run, file_paths))
