@@ -27,4 +27,8 @@ def get_evaluation_folder(identifier: str):
     return f"./experiments/{identifier}/tuning/"
 
 def get_target_image(file: str):
-    return f"./images/{file.split("/")[-1][:-3]}.png"
+    split_symbol = "/"
+    if "\\" in file:
+        split_symbol = "\\"
+
+    return f"./images/{file.split(split_symbol)[-1][:-3]}.png"
