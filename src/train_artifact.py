@@ -17,8 +17,8 @@ from training.training import NeuronPopulationParameter, NeuronPopulationTrainin
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation"
-path = "./experiments/mnist_evaluation/tuning/"
+identifier = "mnist_evaluation_population"
+path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)
 for p in sorted(folder_path.glob("population*.json")):

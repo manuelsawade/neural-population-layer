@@ -24,7 +24,6 @@ def load_csv_files(folder: str) -> pd.DataFrame:
     dataframes = []
 
     for p, csv in zip(sorted(folder_path.glob("*.json")), sorted(folder_path.glob("*.csv"))):
-        print(csv)
         try:
             with open(p, "r") as f:
                 raw = json.loads(f.read())
@@ -47,12 +46,12 @@ def load_csv_files(folder: str) -> pd.DataFrame:
     return pd.concat(dataframes)
 
 def main():
-    identifier = "mnist_evaluation_preferred_value"
+    identifier = "mnist_evaluation_population"
     folder = f"./experiments/{identifier}/"
     print("Loading JSON files...")
     df = load_csv_files(folder)
     print(f"Loaded {len(df)} records.")
-    #print(df)
+    print(df)
 
     metrics = ["accuracy", "loss", "fsa_inf_mean", "fsa_inf_mean_smoothed"]
 
@@ -87,7 +86,7 @@ def main():
         # Plot each stack as a line with error bars
         for stack_name, group in df.groupby("stack"):
             for noise_level, group in group.groupby("noise"):
-                print(stack_name, noise_level)
+                print(stack_name, noise_level, group[metric])
                 color = color_map[stack_name][str(noise_level)]
                 ax.plot(
                     group["epoch"], 
@@ -103,11 +102,11 @@ def main():
             ax.set_ylabel("Training")
 
         if metric == "fsa_inf_mean":
-            ax.set_ylim(0.35, 0.56)
+            #ax.set_ylim(0.35, 0.56)
             ax.set_title("FSA Inf")
 
         if metric == "fsa_inf_mean_smoothed":
-            ax.set_ylim(0.35, 0.56)
+            #ax.set_ylim(0.35, 0.56)
             ax.set_title("FSA Inf Smoothed (Window = 20)")
 
         ax.grid(True, linestyle=":", alpha=0.6)
