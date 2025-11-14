@@ -40,7 +40,7 @@ identifier = "mnist_evaluation"
 input_dim = 784
 output_dim = 10
 
-training_noise=0.5
+training_noise=1.0
 
 #stack = "linear"
 #stack = "population"
@@ -53,10 +53,10 @@ target_mode="min"
 
 def get_config():
     config = {
-        "lr": tune.loguniform(1e-9, 1e-6),
+        "lr": tune.loguniform(1e-9, 1e-4),
         "weight_decay": tune.loguniform(1e-6, 1e-4),
-        "batch_size": tune.choice([4, 8]),
-        "hidden_dim": tune.choice([128, 256]),
+        "batch_size": tune.choice([4, 8, 16, 32, 64, 128]),
+        "hidden_dim": tune.choice([128, 256, 512]),
     }
 
     if stack == "preferred_value":
@@ -73,7 +73,7 @@ def get_config():
     if "population" in stack:
         config["sigma"] = tune.loguniform(0.5, 1.5)
         config["neurons"] = tune.choice([8, 12, 16])
-        config["orientation"] = tune.choice([(-2,2),(-4,4),(-5,5)])
+        config["orientation"] = tune.choice([(0,1),(-1,1),(-2,2),(-4,4),(-5,5)])
         config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
         config["output_encoding"] = True if stack is "population_encoding" else False
 
@@ -81,7 +81,7 @@ def get_config():
         config["activation"] = tune.choice([TuningCurve, MexicanHat])
         config["alpha"] = tune.loguniform(1.0, 10.0)
         config["sigma"] = tune.loguniform(0.1, 0.3)
-        config["normalize"] = tune.choice([True, False])
+        config["normalize"] = tune.choice([True, False]) 
     
     return config
 
@@ -104,10 +104,10 @@ search_alg = OptunaSearch(
     space=get_config(),
     # metric=["fsa_inf_std", "loss", "accuracy"],
     # mode=["min", "min", "max"]
-    # metric=["fsa_inf_mean_diff", "loss"],
-    # mode=["min", "min"]
-    metric="fsa_inf_mean_diff",
-    mode="min"
+    metric=["fsa_inf_mean_diff", "fsa_inf_mean"],
+    mode=["min", "max"]
+    # metric="fsa_inf_mean_diff",
+    # mode="min"
 )
 
 def load_data(): 
