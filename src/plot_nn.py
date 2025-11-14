@@ -1,51 +1,91 @@
 import matplotlib.pyplot as plt
-import numpy as np
+import library
 
-def draw_neural_net(ax, left, right, bottom, top, layer_sizes, layer_labels=None, simplified=False):
-    """
-    Draw a neural network diagram using matplotlib.
-    """
-    v_spacing = (top - bottom)/float(max(layer_sizes if not simplified else [max(10, min(50, n)) for n in layer_sizes]))
-    h_spacing = (right - left)/float(len(layer_sizes) - 1)
+def draw_neural_net(ax, left, right, bottom, top, layer_sizes, threshold=10):
+    '''
+    Draw a neural network cartoon using matplotlib.
 
-    node_positions = []
+    Parameters:
+        ax : matplotlib.axes.AxesSubplot
+            The axes on which to plot.
+        left, right, bottom, top : float
+            Coordinates for placement.
+        layer_sizes : list of int
+            Number of neurons per layer.
+        threshold : int
+            Max number of nodes/edges to display before collapsing.
+    '''
+    n_layers = len(layer_sizes)
+    v_spacing = (top - bottom) / float(max(layer_sizes))
+    h_spacing = (right - left) / float(n_layers - 1)
+
+    # Draw nodes
     for n, layer_size in enumerate(layer_sizes):
-        # Limit the number of visible nodes for full version rendering speed
-        visible_size = layer_size if (not simplified and layer_size < 400) else min(layer_size, 50)
-        layer_top = v_spacing*(visible_size - 1)/2. + (top + bottom)/2.
-        positions = [(n*h_spacing + left, layer_top - m*v_spacing) for m in range(visible_size)]
-        node_positions.append(positions)
+        layer_top = v_spacing * (layer_size - 1) / 2.0 + (top + bottom) / 2.0
+        
+        # Decide which nodes to show
+        if layer_size > threshold:
+            indices = [0, 1, 2, layer_size - 3, layer_size - 2, layer_size - 1]
+            show_indices = sorted(set(i for i in indices if 0 <= i < layer_size))
+        else:
+            show_indices = range(layer_size)
 
-    # Connections (reduced for clarity and speed)
-    for n, (layer1, layer2) in enumerate(zip(node_positions[:-1], node_positions[1:])):
-        step = 1 if simplified else max(1, len(layer1)//50)
-        for i, (x1, y1) in enumerate(layer1[::step]):
-            for j, (x2, y2) in enumerate(layer2[::step]):
-                ax.plot([x1, x2], [y1, y2], 'k-', lw=0.3 if not simplified else 0.7, alpha=0.5)
+        for m in show_indices:
+            circle = plt.Circle(
+                (n * h_spacing + left, layer_top - m * v_spacing),
+                v_spacing / 4.0,
+                color='w',
+                ec='k',
+                zorder=4
+            )
+            ax.add_artist(circle)
 
-    for layer, positions in enumerate(node_positions):
-        for (x, y) in positions:
-            ax.plot(x, y, 'o', markersize=3 if not simplified else 6, color='royalblue')
-        if layer_labels:
-            ax.text(x, top + 0.05, layer_labels[layer], fontsize=10, ha='center')
+        # Add [...] label if truncated
+        if layer_size > threshold:
+            ax.text(
+                n * h_spacing + left,
+                layer_top - (layer_size / 2.0) * v_spacing,
+                '[...]',
+                ha='center', va='center', fontsize=10
+            )
 
-# Create two plots
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    # Draw edges
+    for n, (layer_size_a, layer_size_b) in enumerate(zip(layer_sizes[:-1], layer_sizes[1:])):
+        layer_top_a = v_spacing * (layer_size_a - 1) / 2.0 + (top + bottom) / 2.0
+        layer_top_b = v_spacing * (layer_size_b - 1) / 2.0 + (top + bottom) / 2.0
 
-# "Full" version (still reduced for practicality)
-ax1 = axes[0]
-draw_neural_net(ax1, 0.1, 0.9, 0.1, 0.9, [784, 200, 10],
-                layer_labels=['Input (784)', 'Hidden (200)', 'Output (10)'], simplified=False)
-ax1.set_title("Full Neural Network (784-200-10)", fontsize=12)
-ax1.axis('off')
+        # Determine visible nodes for each side
+        if layer_size_a > threshold:
+            idx_a = [0, 1, 2, layer_size_a - 3, layer_size_a - 2, layer_size_a - 1]
+            show_a = sorted(set(i for i in idx_a if 0 <= i < layer_size_a))
+        else:
+            show_a = range(layer_size_a)
 
-# Simplified version
-ax2 = axes[1]
-draw_neural_net(ax2, 0.1, 0.9, 0.1, 0.9, [784, 200, 10],
-                layer_labels=['Input (784)', 'Hidden (200)', 'Output (10)'], simplified=True)
-ax2.set_title("Simplified Neural Network (784-200-10)", fontsize=12)
-ax2.axis('off')
+        if layer_size_b > threshold:
+            idx_b = [0, 1, 2, layer_size_b - 3, layer_size_b - 2, layer_size_b - 1]
+            show_b = sorted(set(i for i in idx_b if 0 <= i < layer_size_b))
+        else:
+            show_b = range(layer_size_b)
 
-plt.tight_layout()
-plt.show()
+        # Draw selected edges
+        for m in show_a:
+            for o in show_b:
+                line = plt.Line2D(
+                    [n * h_spacing + left, (n + 1) * h_spacing + left],
+                    [layer_top_a - m * v_spacing, layer_top_b - o * v_spacing],
+                    c='k',
+                    lw=0.5
+                )
+                ax.add_artist(line)
 
+    ax.set_xlim(left - h_spacing, right + h_spacing)
+    ax.set_ylim(bottom - v_spacing, top + v_spacing)
+    ax.axis('off')
+
+
+# Example usage:
+if __name__ == "__main__":
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.gca()
+    draw_neural_net(ax, .1, .9, .1, .9, [784, 128, 10], threshold=30)
+    plt.savefig(library.get_target_image(__file__))

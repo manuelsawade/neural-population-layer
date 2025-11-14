@@ -18,53 +18,59 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from display_names import get_display_name
+from library import get_display_name, get_evaluation_folder, get_evaluation_identifier
 
 
-def load_json_files(folder: str, ignore: list[str]) -> pd.DataFrame:
-    folder_path = Path(folder)
+def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) -> pd.DataFrame:
     records = []
-    for p in sorted(folder_path.glob("*.json")):
-        try:
-            with open(p, "r") as f:
-                raw = json.load(f)
-        except Exception as e:
-            print(f"Skipping {p} (could not read): {e}")
-            continue
-        
+    
+    for folder in [compare_folder, target_folder]:  
+        print(folder)
+        folder_path = Path(folder)
 
-        record: Dict[str, Any] = {}
-        for k, v in raw.items():
-            if k in ignore: continue
+        for p in sorted(folder_path.glob("*.json")):
+            try:
+                with open(p, "r") as f:
+                    raw = json.load(f)
+            except Exception as e:
+                print(f"Skipping {p} (could not read): {e}")
+                continue
+            
 
-            if isinstance(v, list):
-                record[k] = "_".join(map(str, v))
-            else:
-                record[k] = v
+            record: Dict[str, Any] = {}
+            for k, v in raw.items():
+                if k in ignore: continue
 
-        records.append(record)
+                if isinstance(v, list):
+                    record[k] = "_".join(map(str, v))
+                else:
+                    record[k] = v
+
+            records.append(record)
 
     if not records:
         raise RuntimeError(f"No JSON files loaded from {folder}")
     return pd.DataFrame.from_records(records)
 
 def main():
-    population_stack = "population"
+    linear_stack = "linear"
+    #population_stack = "population"
+    population_stack = "population_encoding"
     #population_stack = "preferred_value"
     #population_stack = "softmax_gaussian"
     dataset = "mnist"
     
     
-    identifier = f"{dataset}_evaluation_{population_stack}"
-    #identifier = "mnist_evaluation"
-    folder = f"./experiments/{identifier}/tuning/"
+    identifier = get_evaluation_identifier(dataset, population_stack)
+    folder = get_evaluation_folder(identifier)
 
-    linear_stack = "linear"
+    linear_folder = get_evaluation_folder(get_evaluation_identifier(dataset, linear_stack))
+
 
     ignore = ["initializer", "requires_grad", "noise_probability", "lr", "freq", "weight_decay", "batch_size", "phase", "amp", "distribution", "metric"]
 
     print("Loading JSON files...")
-    df = load_json_files(folder, ignore)
+    df = load_json_files(folder, linear_folder, ignore)
     print(f"Loaded {len(df)} records.")
 
     df = df.loc[df['target_metric'] == 'fsa_inf_mean_diff']
@@ -153,13 +159,8 @@ def main():
                 if len(train_val) and len(test_val):
                     diff = abs(train_val[i] - test_val[i])
                     y_mid = (train_val[i] + test_val[i]) / 2
-                    print(diff, y_mid)
 
-                    # Circle size scales with difference magnitude
-                    base_size = 10
                     size = diff * 1000 * ((1 + diff) ** 1.5)
-                    cmap = plt.cm.get_cmap("Greys")
-                    #color = cmap(diff * 1.5) # normalized to [0,1]
 
                     ax.scatter(noise, y_mid, s=size, color="black", alpha=0.6, zorder=5, label=difference_label)
                     difference_label = ""
@@ -185,7 +186,7 @@ def main():
     fig.legend(loc="outside lower right", prop={'size': 9}, ncol=2)
     # Layout and save
     plt.tight_layout()
-    plt.savefig(f"{folder}{identifier}_training_test_performance.png", dpi=300)
+    plt.savefig(f"{folder}{identifier}_tuning_performance.png", dpi=300)
     plt.close(fig)
     
 

@@ -12,7 +12,7 @@ class DecoderBase(nn.Module):
     def forward(self, out: Tensor, mu: Tensor, orientation: tuple[float, float]) -> Tensor:
         pass
 
-class WeightedAverageDecoder(DecoderBase):
+class  WeightedAverageDecoder(DecoderBase):
     name = "weighted_average"
 
     def forward(self, out: Tensor, mu: Tensor, orientation: tuple[float, float]) -> Tensor:

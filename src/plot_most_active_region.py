@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import torch
 import torch.nn.functional as F
 
-from display_names import get_display_name
+from src.library import get_display_name
 
 np.random.seed(1995)
 torch.manual_seed(1997)

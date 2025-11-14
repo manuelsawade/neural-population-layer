@@ -28,9 +28,10 @@ import torchvision
 import optuna
 
 from activations.neuron import NeuronPopulation, PreferredStimulus
-from decoder import WeightedAverageDecoder
-from populations import MexicanHat, TuningCurve
+from decoder import CircularMeanDecoder, WeightedAverageDecoder
+from populations import CircularTuningCurve, Distribution, MexicanHat, SineWave, TuningCurve
 from activations.dynamic import SoftmaxGaussianActivation
+from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
 from tuner_data_transforms import add_noise, clamp_transform 
 
 date_time = datetime.now()
@@ -39,13 +40,15 @@ identifier = "mnist_evaluation"
 input_dim = 784
 output_dim = 10
 
-training_noise=1.0
+training_noise=0.5
 
 #stack = "linear"
-stack = "population"
+#stack = "population"
+stack = "population_circular"
 #stack = "population_encoding"
 #stack = "softmax_gaussian"
-target_metric = "fsa_inf_mean_diff"
+#stack = "preferred_value"
+target_metric = "fsa_inf_mean_diff" 
 target_mode="min"
 
 def get_config():
@@ -55,13 +58,24 @@ def get_config():
         "batch_size": tune.choice([4, 8]),
         "hidden_dim": tune.choice([128, 256]),
     }
+
+    if stack == "preferred_value":
+        config["freq"] = tune.choice([4, 6, 8, 10, 12, 14, 16, 18])
+        config["phase"] = tune.loguniform(0.5, 1.5)
+        config["amp"] = tune.choice([0.5, 1.0, 1.5])
+        config["distribution"] = tune.choice([Distribution.ZERO_MEAN, Distribution.ZERO_BASE])
+        config["initializer"] = tune.choice([
+            PreferredValueInitializer.SINE_WAVE, 
+            PreferredValueInitializer.RANDOM_NORMAL, 
+            PreferredValueInitializer.RANDOM_UNIFORM])
+        config["requires_grad"] = tune.choice([True, False])
     
     if "population" in stack:
         config["sigma"] = tune.loguniform(0.5, 1.5)
         config["neurons"] = tune.choice([8, 12, 16])
         config["orientation"] = tune.choice([(-2,2),(-4,4),(-5,5)])
         config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
-        config["output_encoding"] = False if stack is "population" else True
+        config["output_encoding"] = True if stack is "population_encoding" else False
 
     if stack == "softmax_gaussian":
         config["activation"] = tune.choice([TuningCurve, MexicanHat])
@@ -122,6 +136,28 @@ def load_data():
     return training_data, test_data
 
 def get_stack(config):
+    if stack == "preferred_value":
+        match config["initializer"]:
+            case PreferredValueInitializer.SINE_WAVE:
+                preference = SineWave(
+                    config["hidden_dim"], 
+                    freq=config["freq"],
+                    phase=config["phase"],
+                    amp=config["amp"],
+                    dist=config["distribution"],
+                    requires_grad=config["requires_grad"]
+            )
+            case PreferredValueInitializer.RANDOM_NORMAL:
+                preference = torch.randn(config["hidden_dim"])
+            case PreferredValueInitializer.RANDOM_UNIFORM:
+                preference = torch.rand(config["hidden_dim"])
+
+        return nn.Sequential(
+            nn.Linear(input_dim, config["hidden_dim"]),
+            PreferredValueActivation(initialized=preference),
+            nn.LazyLinear(output_dim),     
+        )
+    
     if stack == "population":
         return nn.Sequential(
             nn.Linear(input_dim, config["hidden_dim"]),
@@ -131,6 +167,18 @@ def get_stack(config):
                 neurons=config["neurons"],#neurons=hyper_parameter.neurons,
                 orientation=config["orientation"],#orientation=hyper_parameter.orientation,
                 activation=TuningCurve(readout=WeightedAverageDecoder()),
+                stimulus=config["stimulus"]),
+            nn.LazyLinear(output_dim))
+    
+    if stack == "population_circular":
+        return nn.Sequential(
+            nn.Linear(input_dim, config["hidden_dim"]),
+            NeuronPopulation(
+                config["hidden_dim"], 
+                sigma=config["sigma"],#sigma=hyper_parameter.sigma,
+                neurons=config["neurons"],#neurons=hyper_parameter.neurons,
+                orientation=config["orientation"],#orientation=hyper_parameter.orientation,
+                activation=CircularTuningCurve(readout=CircularMeanDecoder()),
                 stimulus=config["stimulus"]),
             nn.LazyLinear(output_dim))
     
@@ -312,6 +360,13 @@ def test(config, checkpoint_data, scope):
 
     if stack == "softmax_gaussian":
         copy["activation"] = copy["activation"].name
+
+    if copy.get("distribution") is not None:
+        copy["distribution"] = copy["distribution"].name
+
+    if copy.get("initializer") is not None and copy["initializer"] != PreferredValueInitializer.SINE_WAVE:
+        for remove in ["freq","phase","amp","distribution","requires_grad"]:
+            del copy[remove]
 
     roby_scores = OrderedDict(sorted(roby_scores.items()))
     for param in roby_scores:
