@@ -55,7 +55,8 @@ def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) 
 def main():
     linear_stack = "linear"
     #population_stack = "population"
-    population_stack = "population_encoding"
+    #population_stack = "population_encoding"
+    population_stack = "population_circular"
     #population_stack = "preferred_value"
     #population_stack = "softmax_gaussian"
     dataset = "mnist"
@@ -80,8 +81,10 @@ def main():
     global_max = global_loss.max()
 
 
-    df["loss"]=(df["loss"] - global_min)/(global_max - global_min)
-    df["test_loss"]=(df["test_loss"] - global_min)/(global_max - global_min)
+    # df["loss"]=(df["loss"] - global_min)/(global_max - global_min)
+    # df["test_loss"]=(df["test_loss"] - global_min)/(global_max - global_min)
+    df["loss"]=(df["loss"] - df["loss"].min())/(df["loss"].max() - df["loss"].min())
+    df["test_loss"]=(df["test_loss"] - df["test_loss"].min())/(df["test_loss"].max() - df["test_loss"].min())
 
     df["test_accuracy"]=df["test_accuracy"] / 100
 

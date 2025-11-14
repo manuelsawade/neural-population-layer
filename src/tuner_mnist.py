@@ -4,6 +4,8 @@ from collections import OrderedDict
 from datetime import datetime
 from functools import partial
 import json
+import os
+import shutil
 from typing import Any
 import torch
 import torch.nn as nn
@@ -36,15 +38,15 @@ from tuner_data_transforms import add_noise, clamp_transform
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation"
-input_dim = 784
-output_dim = 10
-
 training_noise=1.0
 
+#dataset = "mnist"
+dataset = "cifar10"
+identifier = f"{dataset}_evaluation"
+
 #stack = "linear"
-#stack = "population"
-stack = "population_circular"
+stack = "population"
+#stack = "population_circular"
 #stack = "population_encoding"
 #stack = "softmax_gaussian"
 #stack = "preferred_value"
@@ -75,7 +77,7 @@ def get_config():
         config["neurons"] = tune.choice([8, 12, 16])
         config["orientation"] = tune.choice([(0,1),(-1,1),(-2,2),(-4,4),(-5,5)])
         config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
-        config["output_encoding"] = True if stack is "population_encoding" else False
+        config["output_encoding"] = True if stack == "population_encoding" else False
 
     if stack == "softmax_gaussian":
         config["activation"] = tune.choice([TuningCurve, MexicanHat])
@@ -95,7 +97,7 @@ scheduler = ASHAScheduler(
     mode=target_mode,
     time_attr="training_iteration",
     max_t=50,        
-    grace_period=2,
+    grace_period=3,
     reduction_factor=2
 ) 
 
@@ -118,15 +120,17 @@ def load_data():
             transforms.Lambda(partial(add_noise, training_noise=training_noise)),
             transforms.Lambda(clamp_transform)
         ])
+    
+    dataset_loader = torchvision.datasets.MNIST if dataset == "mnist" else torchvision.datasets.CIFAR10
 
-    training_data = torchvision.datasets.MNIST(
+    training_data = dataset_loader(
         root="data",
         train=True,
         download=True,
         transform=transform_with_noise
     )
 
-    test_data = torchvision.datasets.MNIST(
+    test_data = dataset_loader(
         root="data",
         train=False,
         download=True,
@@ -134,6 +138,9 @@ def load_data():
     )
 
     return training_data, test_data
+
+input_dim = 784 if dataset == "mnist" else 32 * 32 * 3
+output_dim = 10
 
 def get_stack(config):
     if stack == "preferred_value":
@@ -168,6 +175,19 @@ def get_stack(config):
                 orientation=config["orientation"],#orientation=hyper_parameter.orientation,
                 activation=TuningCurve(readout=WeightedAverageDecoder()),
                 stimulus=config["stimulus"]),
+            nn.LazyLinear(output_dim))
+    
+    if stack == "population_encoding":
+        return nn.Sequential(
+            nn.Linear(input_dim, config["hidden_dim"]),
+            NeuronPopulation(
+                config["hidden_dim"], 
+                sigma=config["sigma"],#sigma=hyper_parameter.sigma,
+                neurons=config["neurons"],#neurons=hyper_parameter.neurons,
+                orientation=config["orientation"],#orientation=hyper_parameter.orientation,
+                activation=TuningCurve(readout=WeightedAverageDecoder()),
+                stimulus=config["stimulus"],
+                encoded_output=True),
             nn.LazyLinear(output_dim))
     
     if stack == "population_circular":
@@ -382,12 +402,12 @@ def test(config, checkpoint_data, scope):
 
     date = date_time.strftime("%Y_%m_%d_%H_%M_%S")
 
-    with open(f"./experiments/tuning/{stack}/{stack}_{scope}_{identifier}_{date}.json", mode='w', newline='') as file:
+    with open(f"./experiments/tuning/{stack}/{stack}_{identifier}_{date}.json", mode='w', newline='') as file:
         file.write(result)
 
     print("\n")
 
-def test_best_trial(result, metric, mode, scope):
+def test_best_trial(result, metric, mode, scope="last-10-avg"):
     best_trial = result.get_best_trial(metric, mode, scope)
     best_trial.config["stack"] = stack
     best_trial.config["noise"] = training_noise
@@ -426,7 +446,18 @@ def main(data_dir):
     except RayError as e:
         print(f"error: {e}")
 
-    test_best_trial(result, metric="loss", mode="min", scope="last-10-avg") 
+    test_best_trial(result, metric="loss", mode="min") 
+
+    folder = Path('/Users/manuelsawade/ray_results')
+    keep_count = 0
+    for dir in sorted(folder.glob("run*"), reverse=True):
+        if keep_count < 5:
+            keep_count = keep_count + 1
+            continue
+        try:
+            shutil.rmtree(dir)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (dir, e))
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:
