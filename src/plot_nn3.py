@@ -87,7 +87,7 @@ class NeuralNetwork():
         layer = Layer(self, number_of_neurons, self.number_of_neurons_in_widest_layer)
         self.layers.append(layer)
 
-    def draw(self, labels):
+    def draw(self, labels, activations):
         fig = pyplot.figure(figsize=(16, 8))
         bbox = pyplot.gca().get_position()
         layer_offset = bbox.y1 - 0.075
@@ -101,21 +101,28 @@ class NeuralNetwork():
             print(y_text)
 
             title: str
+            activation: str
 
             if i == 0:
                 title = f'Input Layer [{labels[0]}]'
+                activation = ""
             elif i == len(self.layers)-1:
                 title = f'Output Layer [{labels[-1]}]'
+                activation = activations[-1]
             else:
                 title = f'Hidden Layer [{labels[i]}]'
+                activation = activations[i-1]
 
-            fig.text(x_text, y_text, title, fontsize = 22)
+            x_text_left = 0.82
+            font_size = 20
+            fig.text(x_text, y_text, title, fontsize = font_size)
+            fig.text(x_text_left, y_text, activation, fontsize = font_size)
 
             layer_offset = layer_offset - ((bbox.y1 - bbox.y0) / 2.4)
 
         pyplot.axis('scaled')
         pyplot.axis('off')
-        pyplot.title( 'Neural Network Architecture', fontsize=24)
+        pyplot.title( 'Base Network Architecture For MNIST Dataset', fontsize=24)
         pyplot.savefig(f"{library.get_target_image(__file__)}", dpi=300)
 
 class DrawNN():
@@ -123,12 +130,12 @@ class DrawNN():
         neural_network.reverse()
         self.neural_network = neural_network
 
-    def draw( self, labels: list[int]):
+    def draw( self, labels: list, activations: list):
         widest_layer = max( self.neural_network )
         network = NeuralNetwork( widest_layer)
         for l in self.neural_network:
             network.add_layer(l)
-        network.draw(labels=labels)
+        network.draw(labels=labels, activations=activations)
 
-network = DrawNN([6,8,4])
-network.draw(labels=[6,8, 4])
+network = DrawNN([11,11,10])
+network.draw(labels=[784, "VAR", 10], activations=["VAR", "Softmax"])

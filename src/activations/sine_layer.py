@@ -27,5 +27,5 @@ class PreferredValueActivation(nn.Module):
 
         distance = diff / (layer_norm + self.eps)
 
-        activation = distance / distance.max(dim=-1, keepdim=True).values       
+        activation = 1 - (distance / distance.max(dim=-1, keepdim=True).values)  
         return activation

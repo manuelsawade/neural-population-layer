@@ -1,0 +1,21 @@
+{
+  "lr": 7.36364382628493e-05,
+  "weight_decay": 4.12919794774188e-06,
+  "batch_size": 32,
+  "hidden_dim": 512,
+  "stack": "linear",
+  "noise": 0.0,
+  "metric": "loss",
+  "target_metric": "fsa_diff",
+  "loss": 0.13869569509476423,
+  "accuracy": 0.9590833333333333,
+  "fsa_inf_mean": 0.9344082179069519,
+  "fsa_inf_std": 0.032700542360544205,
+  "fsa_inf_mean_diff": -0.014724457502365174,
+  "test_accuracy": 96.16,
+  "test_loss": 0.13352107433989024,
+  "test_fsa_2_mean": 0.35545094782552017,
+  "test_fsa_2_std": 0.09190081804990768,
+  "test_fsa_inf_mean": 0.33415885759999575,
+  "test_fsa_inf_std": 0.10936573147773743
+}

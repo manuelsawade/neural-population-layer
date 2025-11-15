@@ -7,7 +7,22 @@ names = {
     "softmax_gaussian": "Softmax Gaussian",
     "mnist": "MNIST",
     "cifar10": "CIFAR10",
-    "mexican_hat": "Mexican Hat"
+    "mexican_hat": "Mexican Hat",
+    "avg_loss": "Loss (Normalized)",
+    "noi.fgsm.mean": "FGSM Mean (Normalized)",
+    "noi.fgsm.std": "FGSM Std (Normalized)",
+    "sha.layers.0.weight": "Hidden Weight Sharpness (Norm)",
+    "sha.layers.0.bias": "Hidden Bias Sharpness (Norm)",
+    "sha.layers.2.weight": "Output Weight Sharpness (Norm)",
+    "sha.layers.2.bias": "Output Bias Sharpness (Norm)",
+    "rub.fsa_inf.mean": rf"FSA $\infty$ Mean",
+    "rub.fsa_inf.std": rf"FSA $\infty$ Std",
+    "rub.fsa_2.mean": rf"FSA $2$ Mean",
+    "rub.fsa_2.std": rf"FSA $2$ Std",
+    "rub.fsd_inf.mean": rf"FSD $\infty$ Mean",
+    "rub.fsd_inf.std": rf"FSD $\infty$ Std",
+    "rub.fsd_2.mean": rf"FSD $2$ Mean",
+    "rub.fsd_2.std": rf"FSD $2$ Std",
 }
 
 def get_display_name(name: str):

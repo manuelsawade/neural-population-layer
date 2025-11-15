@@ -34,30 +34,32 @@ from decoder import CircularMeanDecoder, WeightedAverageDecoder
 from populations import CircularTuningCurve, Distribution, MexicanHat, SineWave, TuningCurve
 from activations.dynamic import SoftmaxGaussianActivation
 from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
-from tuner_data_transforms import add_noise, clamp_transform 
+from tuner_data_transforms import add_noise, clamp_transform
 
 date_time = datetime.now()
 
-training_noise=1.0
+training_noise=0.0
 
-#dataset = "mnist"
-dataset = "cifar10"
+dataset = "mnist"
+#dataset = "cifar10"
 identifier = f"{dataset}_evaluation"
 
-#stack = "linear"
-stack = "population"
+warmup=0
+
+stack = "linear"
+#stack = "population"
 #stack = "population_circular"
 #stack = "population_encoding"
 #stack = "softmax_gaussian"
 #stack = "preferred_value"
-target_metric = "fsa_inf_mean_diff" 
+target_metric = "loss" 
 target_mode="min"
 
 def get_config():
     config = {
         "lr": tune.loguniform(1e-9, 1e-4),
         "weight_decay": tune.loguniform(1e-6, 1e-4),
-        "batch_size": tune.choice([4, 8, 16, 32, 64, 128]),
+        "batch_size": tune.choice([8, 16, 32, 64, 128]),
         "hidden_dim": tune.choice([128, 256, 512]),
     }
 
@@ -97,19 +99,15 @@ scheduler = ASHAScheduler(
     mode=target_mode,
     time_attr="training_iteration",
     max_t=50,        
-    grace_period=3,
+    grace_period=2,
     reduction_factor=2
 ) 
 
 search_alg = OptunaSearch(
     sampler=sampler,
     space=get_config(),
-    # metric=["fsa_inf_std", "loss", "accuracy"],
-    # mode=["min", "min", "max"]
     metric=["fsa_inf_mean_diff", "fsa_inf_mean"],
     mode=["min", "max"]
-    # metric="fsa_inf_mean_diff",
-    # mode="min"
 )
 
 def load_data(): 
@@ -236,8 +234,15 @@ def run(config, data_dir=None):
                 start_epoch = checkpoint_state["epoch"]
                 stack.load_state_dict(checkpoint_state["net_state_dict"])
                 optimizer.load_state_dict(checkpoint_state["optimizer_state_dict"])
+
+                val_fsa_scores = checkpoint_state["val_fsa_scores"]
+                #loss_diff = checkpoint_state["loss_diff"]
+                #fsa_diff = checkpoint_state["fsa_diff"]
         else:
             start_epoch = 0
+            val_fsa_scores = {}
+            #loss_diff = 0
+            #fsa_diff = []
 
         training_data, test_data = load_data()
 
@@ -255,7 +260,7 @@ def run(config, data_dir=None):
 
         flatten = nn.Flatten()
 
-        for epoch in range(start_epoch, 10): 
+        for epoch in range(start_epoch, 10 + warmup): 
             train_fsa_scores = {}
             
             for i, data in enumerate(trainloader, 0):
@@ -299,10 +304,31 @@ def run(config, data_dir=None):
                     roby_metric(outputs, inputs, p=float('inf'), metric=['fsa'],
                         append_to=val_fsa_scores)
 
+            if epoch < warmup:
+                continue
+
+            mean = sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"])
+            std = torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item()
+
+            loss = val_loss / val_steps
+            
+            # if epoch == 0:
+            #     loss_diff = loss
+            # else:
+            #     loss_diff = 1 / loss_diff - loss
+
+            # if len(fsa_diff) < 1:
+            #     fsa_diff.append(mean)
+           
+            # fsa_diff.append(1 - (max(fsa_diff) / fsa_diff[0]))
+
             checkpoint_data = {
                 "epoch": epoch,
                 "net_state_dict": stack.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
+                "val_fsa_scores": val_fsa_scores,
+                #"loss_diff": loss_diff,
+                #"fsa_diff": fsa_diff
             }
             with tempfile.TemporaryDirectory() as checkpoint_dir:
                 data_path = Path(checkpoint_dir) / "data.pkl"
@@ -313,9 +339,6 @@ def run(config, data_dir=None):
 
                 mean_train = sum(train_fsa_scores["fsa_inf"][:10]) / len(train_fsa_scores["fsa_inf"][:10])
 
-                mean = sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"])
-                std = torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item()
-
                 tune.report(
                     {
                         "training_iteration": epoch + 1,
@@ -323,7 +346,9 @@ def run(config, data_dir=None):
                         "accuracy": correct / total, 
                         "fsa_inf_mean": mean,
                         "fsa_inf_std": std,
-                        "fsa_inf_mean_diff": mean_train - mean
+                        "fsa_inf_mean_diff": mean_train - mean,
+                        #"loss_diff": loss_diff,
+                        #"fsa_diff": fsa_diff[-1]
                     },
                     checkpoint=checkpoint,
                 )

@@ -54,9 +54,9 @@ def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) 
 
 def main():
     linear_stack = "linear"
-    #population_stack = "population"
+    population_stack = "population"
     #population_stack = "population_encoding"
-    population_stack = "population_circular"
+    #population_stack = "population_circular"
     #population_stack = "preferred_value"
     #population_stack = "softmax_gaussian"
     dataset = "mnist"
@@ -74,7 +74,7 @@ def main():
     df = load_json_files(folder, linear_folder, ignore)
     print(f"Loaded {len(df)} records.")
 
-    df = df.loc[df['target_metric'] == 'fsa_inf_mean_diff']
+    #df = df.loc[df['target_metric'] == 'fsa_inf_mean_diff']
 
     global_loss = df[['loss', 'test_loss']].values.flatten()
     global_min = global_loss.min()
