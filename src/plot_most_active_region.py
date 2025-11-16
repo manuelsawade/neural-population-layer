@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import torch
 import torch.nn.functional as F
 
-from src.library import get_display_name
+from library import get_display_name
 
 np.random.seed(1995)
 torch.manual_seed(1997)
@@ -18,8 +18,8 @@ def mexican_hat(x, mu, sigma):
 
 n_neurons = 50
 
-alpha_values = [10.0, 10.0, 10.0, 5.0]
-sigma_values = [0.2, 0.3, 0.2, 0.1]
+alpha_values = [2.0, 5.0, 10.0, 2.0]
+sigma_values = [0.2, 0.3, 0.2, 0.2]
 activation = [gaussian, gaussian, mexican_hat, mexican_hat]
 titles = ["gaussian", "side", "mexican_hat", "none"]
 legend = ["gaussian", "gaussian", "mexican_hat", "mexican_hat"]
@@ -35,13 +35,23 @@ cmap = cm.get_cmap("plasma")
 fig, axes = plt.subplots(4, 2, figsize=(14, 8), gridspec_kw={'height_ratios': [3, 0.4, 3, 0.4]}, sharex=True)
 
 fig.supxlabel(f'Hidden Layer Neurons = {n_neurons}', y=0.02)
-fig.suptitle(f"Activation Based On Softmax Distribution", y=0.98)
+#fig.suptitle(f"Activation Based On Softmax Distribution", y=0.98)
 fig.supylabel("Activation / Value")
+
+enum = iter("abcdefg")
 
 ax_iter = [[axes[0][0], axes[1][0]], [axes[2][0], axes[3][0]], [axes[0][1], axes[1][1]], [axes[2][1], axes[3][1]]]
 for ax, activation, alpha, sigma, title, legend in zip(ax_iter, activation, alpha_values, sigma_values, titles, legend):
     softmax = F.softmax(alpha * input_values)
     output = activation(input_values, softmax, sigma)
+
+    ax[0].text(
+        0.01,        # a little left of the axes
+        0.935,               # same vertical height as the title
+        f"{next(enum)})",
+        fontsize=12, fontweight="bold",
+        transform=ax[0].transAxes
+    )
 
     ax2 = ax[0]
     ax2.plot(x.squeeze(), input_values.squeeze(), 'x', color='gray', label='Input Value')

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from library import get_display_name, get_evaluation_folder, get_evaluation_identifier
+from library import get_display_name, get_evaluation_folder, get_evaluation_identifier, normalize_columns
 
 
 def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) -> pd.DataFrame:
@@ -39,7 +39,7 @@ def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) 
 
             record: Dict[str, Any] = {}
             for k, v in raw.items():
-                if k in ignore: continue
+                if k not in ignore: continue
 
                 if isinstance(v, list):
                     record[k] = "_".join(map(str, v))
@@ -68,28 +68,18 @@ def main():
     linear_folder = get_evaluation_folder(get_evaluation_identifier(dataset, linear_stack))
 
 
-    ignore = ["initializer", "requires_grad", "noise_probability", "lr", "freq", "weight_decay", "batch_size", "phase", "amp", "distribution", "metric"]
+    ignore = ["stack","noise", "accuracy", "test_accuracy", "loss", "test_loss", "fsa_inf_mean", "test_fsa_inf_mean"]
 
     print("Loading JSON files...")
     df = load_json_files(folder, linear_folder, ignore)
     print(f"Loaded {len(df)} records.")
+    df = normalize_columns(df, ["loss", "test_loss"])
 
-    #df = df.loc[df['target_metric'] == 'fsa_inf_mean_diff']
-
-    global_loss = df[['loss', 'test_loss']].values.flatten()
-    global_min = global_loss.min()
-    global_max = global_loss.max()
-
-
-    # df["loss"]=(df["loss"] - global_min)/(global_max - global_min)
-    # df["test_loss"]=(df["test_loss"] - global_min)/(global_max - global_min)
-    df["loss"]=(df["loss"] - df["loss"].min())/(df["loss"].max() - df["loss"].min())
-    df["test_loss"]=(df["test_loss"] - df["test_loss"].min())/(df["test_loss"].max() - df["test_loss"].min())
 
     df["test_accuracy"]=df["test_accuracy"] / 100
 
     stacks = [linear_stack, population_stack]
-    metric_map = [["accuracy", "test_accuracy"], ["loss", "test_loss"], ["fsa_inf_mean", "test_fsa_inf_mean"]]
+    metric_map = [["accuracy", "test_accuracy", "max"], ["loss", "test_loss", "min"], ["fsa_inf_mean", "test_fsa_inf_mean", "max"]]
 
     fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True, sharey=True)
     fig.supxlabel('Noise Level', y=0.05)
@@ -125,15 +115,25 @@ def main():
     train_label: str | None = None
     test_label: str | None = None
 
-    difference_label = "difference"
+    cmap = plt.get_cmap("RdYlGn")
+
+    enum = iter("abcdefg")
 
     for row_axes, stacks in zip(axes, stacks):
         for ax, metrics in zip(row_axes, metric_map):
+            ax.text(
+                0.02,        # a little left of the axes
+                0.88,               # same vertical height as the title
+                f"{next(enum)})",
+                fontsize=9, fontweight="bold",
+                transform=ax.transAxes
+            )
+
+
             subset = df.loc[df['stack'] == stacks]
             subset = subset.sort_values(by='noise', ascending=True)
             for i, split_df in enumerate(subset.groupby(metrics)):
-                #print(split_df[1])
-                for i, metric in enumerate(metrics):                    
+                for i, metric in enumerate(metrics[:2]):                    
                     label = ""
 
                     stage = color_map[stacks][i]["stage"]
@@ -146,29 +146,45 @@ def main():
                     if i == 1 and test_label is None:
                         test_label =f"{stage}"
                         label = test_label
-                  
+                    #print(split_df[1][metric])
                     ax.plot(split_df[1]["noise"], 
                             split_df[1][metric], 
                             marker="o", 
                             linewidth=10, 
                             color=color,
-                            label=label)         
+                            label=label)      
+
+            min = -0.5
+            max = 0.5   
 
             for i, noise in enumerate([0.0, 0.5, 1.0]):
                 train_val = subset[metrics[0]].values              
                 test_val = subset[metrics[1]].values
 
-                
+                difference_label = ""
+
+                if i == 2 and "accuracy" in metrics and stacks == linear_stack:
+                    difference_label = "difference"
+              
                 if len(train_val) and len(test_val):
-                    diff = abs(train_val[i] - test_val[i])
+                    diff_abs = abs(train_val[i] - test_val[i])
                     y_mid = (train_val[i] + test_val[i]) / 2
 
-                    size = diff * 1000 * ((1 + diff) ** 1.5)
+                    size = diff_abs * 1000 * ((1 + diff_abs) ** 1.5)
 
-                    ax.scatter(noise, y_mid, s=size, color="black", alpha=0.6, zorder=5, label=difference_label)
+                    if metrics[2] == "min":
+                        diff = train_val[i] - test_val[i]
+                    else:
+                        diff = test_val[i] - train_val[i]
+
+                    diff = (diff - min) / (max - min)
+                    color=cmap(diff)
+
+                    ax.scatter(noise, y_mid, s=size, color=color, alpha=0.6, zorder=5, label=difference_label)
                     difference_label = ""
 
-            ax.set_ylim(0.0, 1.0)
+            ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+            ax.set_ylim(-0.1, 1.1)
             ax.set_xticks([0, 0.5, 1.0])
             ax.set_xlim(-0.2, 1.2)
             if stacks in linear_stack:            
@@ -186,7 +202,13 @@ def main():
 
 
     # # Add legend to the first subplot only (to avoid clutter)
-    fig.legend(loc="outside lower right", prop={'size': 9}, ncol=2)
+    leg = fig.legend(
+    loc="outside lower right", 
+    prop={'size': 8}, 
+    markerscale=0.4,
+    ncol=2)
+    
+    leg.legend_handles[2].set_color('black')
     # Layout and save
     plt.tight_layout()
     plt.savefig(f"{folder}{identifier}_tuning_performance.png", dpi=300)

@@ -23,6 +23,9 @@ names = {
     "rub.fsd_inf.std": rf"FSD $\infty$ Std",
     "rub.fsd_2.mean": rf"FSD $2$ Mean",
     "rub.fsd_2.std": rf"FSD $2$ Std",
+    "loss_norm": "Loss Normalized",
+    "fsa_inf_mean_norm": "FSA $\infty$ Mean Normalized",
+    "fsa_inf_mean_diff": "FSA $\infty$ Mean Difference",
 }
 
 def get_display_name(name: str):
@@ -47,3 +50,13 @@ def get_target_image(file: str):
         split_symbol = "\\"
 
     return f"./images/{file.split(split_symbol)[-1][:-3]}.png"
+
+def normalize_columns(df, columns: list[str]):
+    global_val = df[columns].values.flatten()
+    global_min = global_val.min()
+    global_max = global_val.max()
+
+    for col in columns:
+        df[col]=(df[col] - global_min)/(global_max - global_min)
+
+    return df

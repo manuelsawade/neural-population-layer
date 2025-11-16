@@ -38,7 +38,7 @@ from tuner_data_transforms import add_noise, clamp_transform
 
 date_time = datetime.now()
 
-training_noise=0.0
+training_noise=1.0
 
 dataset = "mnist"
 #dataset = "cifar10"
@@ -52,15 +52,15 @@ stack = "linear"
 #stack = "population_encoding"
 #stack = "softmax_gaussian"
 #stack = "preferred_value"
-target_metric = "loss" 
+target_metric = "loss_norm" 
 target_mode="min"
 
 def get_config():
     config = {
         "lr": tune.loguniform(1e-9, 1e-4),
         "weight_decay": tune.loguniform(1e-6, 1e-4),
-        "batch_size": tune.choice([8, 16, 32, 64, 128]),
-        "hidden_dim": tune.choice([128, 256, 512]),
+        "batch_size": tune.choice([4, 8, 16]),
+        "hidden_dim": tune.choice([128, 256]),
     }
 
     if stack == "preferred_value":
@@ -106,8 +106,8 @@ scheduler = ASHAScheduler(
 search_alg = OptunaSearch(
     sampler=sampler,
     space=get_config(),
-    metric=["fsa_inf_mean_diff", "fsa_inf_mean"],
-    mode=["min", "max"]
+    metric=["fsa_inf_mean_norm", "fsa_inf_mean_diff"],
+    mode=["max", "min"]
 )
 
 def load_data(): 
@@ -236,13 +236,13 @@ def run(config, data_dir=None):
                 optimizer.load_state_dict(checkpoint_state["optimizer_state_dict"])
 
                 val_fsa_scores = checkpoint_state["val_fsa_scores"]
-                #loss_diff = checkpoint_state["loss_diff"]
-                #fsa_diff = checkpoint_state["fsa_diff"]
+                loss_diff = checkpoint_state["loss_diff"]
+                fsa_max = checkpoint_state["fsa_max"]
         else:
             start_epoch = 0
             val_fsa_scores = {}
-            #loss_diff = 0
-            #fsa_diff = []
+            loss_diff = 0
+            fsa_max = 0
 
         training_data, test_data = load_data()
 
@@ -312,10 +312,14 @@ def run(config, data_dir=None):
 
             loss = val_loss / val_steps
             
-            # if epoch == 0:
-            #     loss_diff = loss
-            # else:
-            #     loss_diff = 1 / loss_diff - loss
+            if epoch == 0:
+                loss_diff = loss
+                fsa_max = mean
+
+            mean_norm = mean - fsa_max
+            loss_norm = loss - loss_diff
+
+            
 
             # if len(fsa_diff) < 1:
             #     fsa_diff.append(mean)
@@ -327,8 +331,8 @@ def run(config, data_dir=None):
                 "net_state_dict": stack.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_fsa_scores": val_fsa_scores,
-                #"loss_diff": loss_diff,
-                #"fsa_diff": fsa_diff
+                "loss_diff": loss_diff,
+                "fsa_max": fsa_max
             }
             with tempfile.TemporaryDirectory() as checkpoint_dir:
                 data_path = Path(checkpoint_dir) / "data.pkl"
@@ -345,10 +349,10 @@ def run(config, data_dir=None):
                         "loss": val_loss / val_steps, 
                         "accuracy": correct / total, 
                         "fsa_inf_mean": mean,
+                        "fsa_inf_mean_norm": mean_norm,
                         "fsa_inf_std": std,
                         "fsa_inf_mean_diff": mean_train - mean,
-                        #"loss_diff": loss_diff,
-                        #"fsa_diff": fsa_diff[-1]
+                        "loss_norm": loss_norm
                     },
                     checkpoint=checkpoint,
                 )
@@ -427,12 +431,12 @@ def test(config, checkpoint_data, scope):
 
     date = date_time.strftime("%Y_%m_%d_%H_%M_%S")
 
-    with open(f"./experiments/tuning/{stack}/{stack}_{identifier}_{date}.json", mode='w', newline='') as file:
+    with open(f"./experiments/tuning/{stack}/{stack}_{identifier}_{copy["metric"]}_{scope}_{date}.json", mode='w', newline='') as file:
         file.write(result)
 
     print("\n")
 
-def test_best_trial(result, metric, mode, scope="last-10-avg"):
+def test_best_trial(result, metric, mode, scope="last"):
     best_trial = result.get_best_trial(metric, mode, scope)
     best_trial.config["stack"] = stack
     best_trial.config["noise"] = training_noise
@@ -471,7 +475,7 @@ def main(data_dir):
     except RayError as e:
         print(f"error: {e}")
 
-    test_best_trial(result, metric="loss", mode="min") 
+    test_best_trial(result, metric=target_metric, mode="min")
 
     folder = Path('/Users/manuelsawade/ray_results')
     keep_count = 0
