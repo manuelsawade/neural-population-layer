@@ -82,9 +82,9 @@ def main():
     stacks = linear_stack
     metric_map = [["accuracy", "test_accuracy", "max"], ["loss", "test_loss", "min"], ["fsa_inf_mean", "test_fsa_inf_mean", "max"]]
 
-    fig, axes = plt.subplots(1, 3, figsize=(7, 2.5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(7, 2), sharex=True, sharey=True)
     fig.supxlabel('Noise Level', y=0.05)
-    fig.suptitle(f"Tuning Evaluation of {get_display_name(linear_stack)} Stack on {get_display_name(dataset)} Dataset", y=0.97)
+    #fig.suptitle(f"Tuning Evaluation of {get_display_name(linear_stack)} Stack on {get_display_name(dataset)} Dataset", y=0.97)
 
     axes[0].set_ylabel("Metric Value")
 
@@ -115,9 +115,19 @@ def main():
     train_label: str | None = None
     test_label: str | None = None
 
+    enum = iter("abcdefg")
+
     for ax, metrics in zip(axes, metric_map):
         subset = df.loc[df['stack'] == stacks]
         subset = subset.sort_values(by='noise', ascending=True)
+        ax.text(
+            0.02,        # a little left of the axes
+            0.88,               # same vertical height as the title
+            f"{next(enum)})",
+            fontsize=9, fontweight="bold",
+            transform=ax.transAxes
+        )
+
         for i, split_df in enumerate(subset.groupby(metrics[:2])):
             #print(split_df[1])
             for i, metric in enumerate(metrics[:2]):                    
@@ -159,7 +169,7 @@ def main():
                 diff_abs = abs(train_val[i] - test_val[i])
                 y_mid = (train_val[i] + test_val[i]) / 2
 
-                size = diff_abs * 1000 * ((1 + diff_abs) ** 1.5)
+                size = diff_abs * 600 * ((1 + diff_abs) ** 1.5)
 
                 if metrics[2] == "min":
                     diff = train_val[i] - test_val[i]

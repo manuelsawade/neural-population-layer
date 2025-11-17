@@ -1,0 +1,28 @@
+{
+  "lr": 7.182489284084786e-06,
+  "weight_decay": 2.8245507770986978e-05,
+  "batch_size": 8,
+  "hidden_dim": 256,
+  "sigma": 0.6650492756890307,
+  "neurons": 12,
+  "orientation": [
+    0,
+    1
+  ],
+  "stimulus": "LINEAR",
+  "stack": "population",
+  "noise": 0.0,
+  "metric": "loss_norm",
+  "target_metric": "loss_norm",
+  "loss": 0.43373495651036503,
+  "accuracy": 0.8858333333333334,
+  "fsa_inf_mean": 0.9765382067759831,
+  "fsa_inf_std": 0.05586034432053566,
+  "fsa_inf_mean_diff": -0.03368106051286057,
+  "test_accuracy": 89.53999999999999,
+  "test_loss": 0.4088513618648052,
+  "test_fsa_2_mean": 0.7170404475212098,
+  "test_fsa_2_std": 0.1577274054288864,
+  "test_fsa_inf_mean": 0.6933706481456756,
+  "test_fsa_inf_std": 0.17673517763614655
+}

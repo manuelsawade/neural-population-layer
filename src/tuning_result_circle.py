@@ -52,9 +52,9 @@ def load_json_files(target_folder: str, compare_folder: str, ignore: list[str]) 
         raise RuntimeError(f"No JSON files loaded from {folder}")
     return pd.DataFrame.from_records(records)
 
-def main():
+def main(population_stack):
     linear_stack = "linear"
-    population_stack = "population"
+    #population_stack = "population"
     #population_stack = "population_encoding"
     #population_stack = "population_circular"
     #population_stack = "preferred_value"
@@ -83,7 +83,7 @@ def main():
 
     fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True, sharey=True)
     fig.supxlabel('Noise Level', y=0.05)
-    fig.suptitle(f"Tuning Evaluation of {get_display_name(population_stack)} Stack on {get_display_name(dataset)} Dataset", y=0.97)
+    #fig.suptitle(f"Tuning Evaluation of {get_display_name(population_stack)} Stack on {get_display_name(dataset)} Dataset", y=0.97)
 
     axes[0][0].set_ylabel(get_display_name(linear_stack))
     axes[1][0].set_ylabel(get_display_name(population_stack))
@@ -150,7 +150,7 @@ def main():
                     ax.plot(split_df[1]["noise"], 
                             split_df[1][metric], 
                             marker="o", 
-                            linewidth=10, 
+                            linewidth=5, 
                             color=color,
                             label=label)      
 
@@ -203,10 +203,10 @@ def main():
 
     # # Add legend to the first subplot only (to avoid clutter)
     leg = fig.legend(
-    loc="outside lower right", 
-    prop={'size': 8}, 
-    markerscale=0.4,
-    ncol=2)
+        loc="outside lower right", 
+        prop={'size': 8}, 
+        markerscale=0.4,
+        ncol=2)
     
     leg.legend_handles[2].set_color('black')
     # Layout and save
@@ -217,4 +217,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for stack in ["population", "population_encoding", "preferred_value", "softmax_gaussian"]:
+        main(stack)
