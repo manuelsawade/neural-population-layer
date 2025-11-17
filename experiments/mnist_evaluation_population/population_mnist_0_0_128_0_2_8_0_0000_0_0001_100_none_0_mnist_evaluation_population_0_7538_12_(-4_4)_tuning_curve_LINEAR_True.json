@@ -1,0 +1,71 @@
+{
+    "network": "population",
+    "avg_loss": 0.15140984877720476,
+    "accuracy": 95.58,
+    "sharpness_scores": {
+        "layers.0.weight": 1.6067491625390946,
+        "layers.0.bias": 0.0051651668454520405,
+        "layers.2.weight": 0.8166462403444573,
+        "layers.2.bias": 0.002510139110824093
+    },
+    "activation_scores": {
+        "layers.0": {
+            "std": 1.2882862091064453,
+            "mean": -0.4525145888328552
+        },
+        "layers.1": {
+            "std": 0.32520097494125366,
+            "mean": 3.6135125160217285
+        },
+        "layers.2": {
+            "std": 4.010735511779785,
+            "mean": -74.18008422851562
+        }
+    },
+    "ruby_scores": {
+        "fsa_2": {
+            "mean": 0.7245169773101806,
+            "std": 0.15662702918052673
+        },
+        "fsa_inf": {
+            "mean": 0.7021976529598236,
+            "std": 0.17506448924541473
+        },
+        "fsd_2": {
+            "mean": 0.5260416657209397,
+            "std": 0.08087630569934845
+        },
+        "fsd_inf": {
+            "mean": 0.7088696223855019,
+            "std": 0.1561688333749771
+        }
+    },
+    "noise_sensitivity": {
+        "fgsm": {
+            "mean": 0.05566408611810754,
+            "std": 0.032728035002946854
+        }
+    },
+    "hyper_parameter": {
+        "dataset": "mnist",
+        "hidden_dim": 128,
+        "training_noise": 0.0,
+        "test_noise": 0.2,
+        "batch_size": 8,
+        "learning_rate": 1.5148419450060032e-06,
+        "weight_decay": 8.336801284298909e-05,
+        "epochs": 100,
+        "created_on": "2025_11_16_23_37_29",
+        "seed": 7710706,
+        "subset": null,
+        "sigma": 0.7538453942072999,
+        "neurons": 12,
+        "orientation": [
+            -4,
+            4
+        ],
+        "activation": "tuning_curve",
+        "stimulus": "LINEAR",
+        "encoded_output": true
+    }
+}
