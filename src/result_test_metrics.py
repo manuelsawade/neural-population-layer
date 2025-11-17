@@ -107,7 +107,14 @@ def main():
         ["sha.layers.0.weight",  "sha.layers.0.bias",  "sha.layers.2.weight", "sha.layers.2.bias"]
     ]
 
-    fig, axes = plt.subplots(len(metric_map), len(metric_map[0]), figsize=(12, 7), sharex=True, sharey=True)
+    target_map = [
+        ["max", "min", "min", "min"],
+        ["max", "max", "max", "max"],
+        ["min", "min", "min", "min"],
+        ["min", "min", "min", "min"],
+    ]
+
+    fig, axes = plt.subplots(len(metric_map), len(metric_map[0]), figsize=(11, 7.5), sharex=True, sharey=True)
     fig.supxlabel('Noise Level')
 
     color_map = {
@@ -124,14 +131,23 @@ def main():
         
     }
 
-    difference_label = "difference"
     label: str | None = None
 
-    for ax_row, metrics_row in zip(axes, metric_map):
-        for ax, metrics in zip(ax_row, metrics_row):
+    cmap = plt.get_cmap("RdYlGn")
+    enum = iter("abcdefghijklmnopqrstuvwxyz")
+
+    for ax_row, metrics_row, target_row in zip(axes, metric_map, target_map):
+        for ax, metrics, target in zip(ax_row, metrics_row, target_row):
+            ax.text(
+                0.02,        # a little left of the axes
+                0.88,               # same vertical height as the title
+                f"{next(enum)})",
+                fontsize=11, fontweight="bold",
+                transform=ax.transAxes
+            )
 
             print(ax, metric_map)
-            ax.set_title(get_display_name(metrics))
+            ax.set_title(get_display_name(metrics), fontsize=11)
 
             df = df.sort_values(by='hyp.training_noise', ascending=True)
 
@@ -144,12 +160,15 @@ def main():
                 print(network)
                 ax.plot(subset["hyp.training_noise"], 
                         subset[metrics], 
-                        marker="o", 
+                        marker="o",
                         linewidth=0,
                         color=color,
                         label=label)  
 
                 label = ""       
+
+            min = -0.5
+            max = 0.5
 
             for i, noise in enumerate([0.0, 0.5, 1.0]):
                 train_val = df.loc[df['network'] == "linear"][metrics].values              
@@ -157,15 +176,27 @@ def main():
                 print(df)
                 print(train_val, test_val)
 
+                difference_label = ""
+
+                if i == 0 and "rub.fsa_inf.std" in metrics:
+                    difference_label = "difference"
+
                 
                 if len(train_val) and len(test_val):
-                    diff = abs(train_val[i] - test_val[i])
+                    diff_abs = abs(train_val[i] - test_val[i])
                     y_mid = (train_val[i] + test_val[i]) / 2
-                    print(diff, y_mid)
 
-                    size = diff * 600 * ((1 + diff) ** 1.5)
+                    size = diff_abs * 1000 * ((1 + diff_abs) ** 1.5)
 
-                    ax.scatter(noise, y_mid, s=size, color="black", alpha=0.6, zorder=5, label=difference_label)
+                    if target == "min":
+                        diff = train_val[i] - test_val[i]
+                    else:
+                        diff = test_val[i] - train_val[i]
+
+                    diff = (diff - min) / (max - min)
+                    color=cmap(diff)
+
+                    ax.scatter(noise, y_mid, s=size, color=color, alpha=0.6, zorder=5, label=difference_label)
                     difference_label = ""
 
             ax.set_ylim(-0.1, 1.1)
@@ -183,12 +214,14 @@ def main():
             ax.grid(True, linestyle=":", alpha=0.6)
 
     # # Add legend to the first subplot only (to avoid clutter)
-    fig.legend(loc="outside lower right", prop={'size': 10})
+    leg = fig.legend(loc="outside lower right", prop={'size': 10}, ncol=2)
     fig.suptitle("")
+
+    leg.legend_handles[2].set_color('black')
 
     # Layout and save
     plt.tight_layout()
-    plt.savefig(f"{folder}{identifier}_acc_loss.png", dpi=600)
+    plt.savefig(f"{folder}{identifier}_test_metrics.png", dpi=600)
     plt.close(fig)
 
     print("Figure saved as performance_vs_noise_all_metrics.png")
