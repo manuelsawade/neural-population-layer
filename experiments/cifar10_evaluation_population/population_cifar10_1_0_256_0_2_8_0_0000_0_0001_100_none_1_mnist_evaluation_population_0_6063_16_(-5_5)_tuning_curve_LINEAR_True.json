@@ -1,0 +1,71 @@
+{
+    "network": "population",
+    "avg_loss": 1.913356846666336,
+    "accuracy": 36.370000000000005,
+    "sharpness_scores": {
+        "layers.0.weight": 0.6813816808223724,
+        "layers.0.bias": -0.008543391799926758,
+        "layers.2.weight": 3.5296025900363923,
+        "layers.2.bias": 0.010145789885520935
+    },
+    "activation_scores": {
+        "layers.0": {
+            "std": 1.782292366027832,
+            "mean": -0.0929274931550026
+        },
+        "layers.1": {
+            "std": 0.2811852991580963,
+            "mean": 2.254563570022583
+        },
+        "layers.2": {
+            "std": 2.287862539291382,
+            "mean": -12.504620552062988
+        }
+    },
+    "ruby_scores": {
+        "fsa_2": {
+            "mean": 0.6554074999332428,
+            "std": 0.1448344588279724
+        },
+        "fsa_inf": {
+            "mean": 0.6428846963882446,
+            "std": 0.15150681138038635
+        },
+        "fsd_2": {
+            "mean": 0.4738859907865524,
+            "std": 0.08579491823911667
+        },
+        "fsd_inf": {
+            "mean": 0.5377586344718933,
+            "std": 0.08593912422657013
+        }
+    },
+    "noise_sensitivity": {
+        "fgsm": {
+            "mean": 0.03574689293161418,
+            "std": 0.03175339102745056
+        }
+    },
+    "hyper_parameter": {
+        "dataset": "cifar10",
+        "hidden_dim": 256,
+        "training_noise": 1.0,
+        "test_noise": 0.2,
+        "batch_size": 8,
+        "learning_rate": 9.275925362358125e-07,
+        "weight_decay": 7.253966750782282e-05,
+        "epochs": 100,
+        "created_on": "2025_11_15_16_29_52",
+        "seed": 9810765,
+        "subset": null,
+        "sigma": 0.6063030476462757,
+        "neurons": 16,
+        "orientation": [
+            -5,
+            5
+        ],
+        "activation": "tuning_curve",
+        "stimulus": "LINEAR",
+        "encoded_output": true
+    }
+}
