@@ -22,7 +22,7 @@ import ray.cloudpickle as pickle
 from ray.tune.schedulers import ASHAScheduler
 
 from metrics.activations import activation_metric
-from metrics.noise_sensitivity import noise_sensitivity_metric
+from metrics.noise_sensitivity import noise_accuracy, noise_sensitivity_metric
 from metrics.roby import roby_metric
 from metrics.sharpness import sharpness_metric
 
@@ -131,6 +131,7 @@ class Trainer:
         sharpness_scores: dict[str, float] = {}
         roby_scores: dict[str, float] = {}
         noise_sensitivity_scores: dict[str, list[float]] = {}
+        fgsm_accuracy_scores: dict[str, list[float]] = {}
 
         activation_metric(self.model, append_to=activation_scores)
 
@@ -152,7 +153,10 @@ class Trainer:
                 roby_metric(x, pred, p=2, metric=['fsa', 'fsd'],
                     append_to=roby_scores)
                 
-                noise_sensitivity_metric(self.model, x, y, attack='fgsm', topk=self.dataset.output_dim, 
+                noise_accuracy(self.model, self.flatten(x), y, self.loss_fn,
+                    append_to=fgsm_accuracy_scores)
+                
+                noise_sensitivity_metric(self.model, x, y,
                     append_to=noise_sensitivity_scores)
                 
                 #autoattack_metric(self.model, x, y, self.device, eps=8/255, norm='Linf', log_path=path)
@@ -210,6 +214,13 @@ class Trainer:
 
             print(f"  {param}: {mean:>4f} (mean)")
             print(f"  {param}: {std:>4f} (std)")
+
+        # print(f"FGSM Accuracy")
+        # noise_sensitivity_output = {}       
+        # noise_sensitivity_output["fgsm_accuracy"] = fgsm_accuracy_scores["correct"] / fgsm_accuracy_scores["total"]
+        # noise_sensitivity_output["fgsm_loss"] = fgsm_accuracy_scores["loss"] / fgsm_accuracy_scores["total"]
+
+        # print(f"  fgsm_accuracy: {noise_sensitivity_output["fgsm_accuracy"]:>4f}")
 
         #if write_file:
             # fig, axs = plt.subplots(len(activation_scores['output']), figsize=(40, 20), sharey=True)

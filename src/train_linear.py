@@ -12,11 +12,13 @@ from datasets.cifar10 import CIFAR10
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation_population"
+identifier = "cifar10_evaluation_linear"
 path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)
-for p in sorted(folder_path.glob("linear*.json")):
+file_paths = sorted(folder_path.glob("linear*.json"))
+
+def run(p: tuple):
     print("load file:", p)
     try:
         with open(p, "r") as f:
@@ -28,7 +30,7 @@ for p in sorted(folder_path.glob("linear*.json")):
             for index in [range(1)]:
                 population_training = LinearNetworkTraining(
                     hyper_parameter=HyperParameter(
-                        dataset=MNIST(),
+                        dataset=CIFAR10(),
                         hidden_dim=tuning_result["hidden_dim"],
                         training_noise=tuning_result["noise"],
                         test_noise=0.2,
@@ -48,7 +50,9 @@ for p in sorted(folder_path.glob("linear*.json")):
     except Exception as e:
         print(f"could not read: {e}")
 
-print("done")
+if __name__ == '__main__':
+    with ProcessPoolExecutor(max_workers=3) as executor:
+        list(executor.map(run, file_paths))
 
 
 

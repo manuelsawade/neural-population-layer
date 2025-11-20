@@ -17,7 +17,7 @@ from training.training import NeuronPopulationParameter, NeuronPopulationTrainin
 
 date_time = datetime.now()
 
-identifier = "mnist_evaluation_population_encoding"
+identifier = "cifar10_evaluation_population"
 path = f"./experiments/{identifier}/tuning/"
 
 folder_path = Path(path)
@@ -29,14 +29,17 @@ def run(p: tuple):
         with open(p, "r") as f:
             tuning_result = json.loads(f.read())
 
+        if tuning_result["noise"] != 1.0:
+            return
+
         for i in range(1):
             seed = random.randint(1000000, 9999999)
             torch.manual_seed(seed)  
             print(tuning_result)
             population_training = NeuronPopulationTraining(
                 hyper_parameter=NeuronPopulationParameter(
-                    stack="population_encoding",
-                    dataset=MNIST(),
+                    stack="population",
+                    dataset=CIFAR10(),
                     hidden_dim=tuning_result["hidden_dim"],
                     training_noise=tuning_result["noise"],
                     test_noise=0.2,
@@ -62,5 +65,5 @@ def run(p: tuple):
         print(f"could not read: {e}")
 
 if __name__ == '__main__':
-    with ProcessPoolExecutor(max_workers=3) as executor:
+    with ProcessPoolExecutor(max_workers=1) as executor:
         list(executor.map(run, file_paths))

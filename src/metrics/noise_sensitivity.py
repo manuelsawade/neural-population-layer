@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
-from typing import Optional
+from typing import Callable, Optional
+from torch import Tensor
 
 @torch.no_grad()
 def topk_candidate_classes(logits: torch.Tensor, true_labels: torch.Tensor, topk: int):
@@ -21,6 +22,47 @@ def topk_candidate_classes(logits: torch.Tensor, true_labels: torch.Tensor, topk
             candidates.append(comb[:topk])
     return torch.stack(candidates, dim=0)
 
+def noise_accuracy(
+        model: torch.nn.Module,
+        batch: torch.Tensor, 
+        label: torch.Tensor,
+        loss_fn: Callable[[Tensor, Tensor], Tensor],
+        epsilon: float = 0.2, 
+        append_to: dict[str, float] = {}):
+    batch_clone = batch.clone().detach().requires_grad_(True)
+    model.eval()
+    with torch.enable_grad():
+        pred = model(batch_clone)
+        loss = loss_fn(pred, label) 
+
+        model.zero_grad()
+        loss.backward(retain_graph=True)
+
+        data_grad = batch_clone.grad.detach().clone()
+
+        sign_data_grad = data_grad.sign()
+
+        perturbed_batch = batch + epsilon*sign_data_grad
+        perturbed_batch = torch.clamp(perturbed_batch, 0, 1)
+
+        pred_fgsm = model(perturbed_batch)
+        loss_fgsm = loss_fn(pred_fgsm, label)
+
+        if "total" not in append_to:
+            append_to["total"] = 0.0
+
+        if "correct" not in append_to:
+            append_to["correct"] = 0.0
+
+        if "loss" not in append_to:
+            append_to["loss"] = 0.0
+
+        append_to["total"] += label.size(0)
+        append_to["correct"] += (pred_fgsm.argmax(1) == label).type(torch.float).sum().item()
+        append_to["loss"] += loss_fgsm.item()
+
+
+
 
 def noise_sensitivity_metric(
     model: torch.nn.Module,
@@ -30,7 +72,6 @@ def noise_sensitivity_metric(
     attack: str = "fgsm",    
     topk: int = 10,             
     max_score: float = 100.0,     
-    clamp_grad: bool = False,
     append_to: list[float] = []    
 ):
     x_in = x.clone().detach().requires_grad_(True)
@@ -49,14 +90,8 @@ def noise_sensitivity_metric(
         ce_loss.backward(retain_graph=True)
         grad_input = x_in.grad.detach().clone()
 
-        if clamp_grad:
-            grad_input = grad_input.clamp(-1e6, 1e6)
-
-        if attack.lower() == "fgsm":
-            v = torch.sign(grad_input)
-        elif attack.lower() == "fgm":
-            v = grad_input             
-
+        v = torch.sign(grad_input)
+          
         candidates = topk_candidate_classes(pred.detach(), y, topk=topk) 
         nss_list = torch.full((B,), float(max_score), device=x.device)
 

@@ -3,10 +3,10 @@
     "avg_loss": 0.18583766895153966,
     "accuracy": 94.25,
     "sharpness_scores": {
-        "layers.0.weight": 2.2417067048825934,
-        "layers.0.bias": 0.015026377766035147,
-        "layers.2.weight": 1.593268780247413,
-        "layers.2.bias": 0.0015504179598414339
+        "layers.0.weight": 0.42983272983394566,
+        "layers.0.bias": 0.006120762833207846,
+        "layers.2.weight": 0.49668173028863966,
+        "layers.2.bias": 0.003938202280178666
     },
     "activation_scores": {
         "layers.0": {

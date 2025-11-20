@@ -11,10 +11,10 @@ names = {
     "avg_loss": "Loss (Normalized)",
     "noi.fgsm.mean": "FGSM Mean (Normalized)",
     "noi.fgsm.std": "FGSM Std (Normalized)",
-    "sha.layers.0.weight": "Hidden Weight Sharpness (Norm)",
-    "sha.layers.0.bias": "Hidden Bias Sharpness (Norm)",
-    "sha.layers.2.weight": "Output Weight Sharpness (Norm)",
-    "sha.layers.2.bias": "Output Bias Sharpness (Norm)",
+    "sha.layers.0.weight": "Weight Sharpness Normalized",
+    "sha.layers.0.bias": "Bias Sharpness Normalized",
+    "sha.layers.2.weight": "Weight Sharpness Normalized",
+    "sha.layers.2.bias": "Bias Sharpness Normalized",
     "rub.fsa_inf.mean": rf"FSA $\infty$ Mean",
     "rub.fsa_inf.std": rf"FSA $\infty$ Std",
     "rub.fsa_2.mean": rf"FSA $2$ Mean",
@@ -60,3 +60,36 @@ def normalize_columns(df, columns: list[str]):
         df[col]=(df[col] - global_min)/(global_max - global_min)
 
     return df
+
+import torch
+
+def to_grayscale(x):
+    """
+    Convert an RGB tensor to grayscale using the ITU-R BT.601 formula.
+    Supports shapes (C, H, W) or (N, C, H, W).
+    
+    Gray = 0.299*R + 0.587*G + 0.114*B
+    """
+    if x.ndim == 3:  # (C, H, W)
+        if x.size(0) != 3:
+            raise ValueError("Expected 3 channels (RGB). Got {}".format(x.size(0)))
+        r, g, b = x[0], x[1], x[2]
+        gray = 0.299*r + 0.587*g + 0.114*b
+        return gray.unsqueeze(0)  # return shape (1, H, W)
+
+    elif x.ndim == 4:  # (N, C, H, W)
+        if x.size(1) != 3:
+            raise ValueError("Expected 3 channels (RGB). Got {}".format(x.size(1)))
+        r = x[:, 0, :, :]
+        g = x[:, 1, :, :]
+        b = x[:, 2, :, :]
+        gray = 0.299*r + 0.587*g + 0.114*b
+        return gray.unsqueeze(1)  # return shape (N, 1, H, W)
+
+    else:
+        raise ValueError("Input must have 3 or 4 dimensions.")
+    
+def to_grayscale_flat(x):
+    gray = to_grayscale(x)
+    return gray.view(gray.size(0), -1) if gray.ndim == 4 else gray.view(-1)
+

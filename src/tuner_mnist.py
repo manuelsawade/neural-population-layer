@@ -36,14 +36,16 @@ from activations.dynamic import SoftmaxGaussianActivation
 from activations.sine_layer import PreferredValueActivation, PreferredValueInitializer
 from tuner_data_transforms import add_noise, clamp_transform
 
+noise_levels = [1.0]
+
 def run_tuning(training_noise, stack):
     date_time = datetime.now()
 
     #training_noise=0.5
 
-    dataset = "mnist"
-    #dataset = "cifar10"
-    identifier = f"{dataset}_evaluation"
+    #dataset = "mnist"
+    dataset = "cifar10"
+    identifier = f"{dataset}_evaluation_{stack}"
 
     warmup=0
 
@@ -53,15 +55,16 @@ def run_tuning(training_noise, stack):
     #stack = "population_encoding"
     #stack = "softmax_gaussian"
     #stack = "preferred_value"
-    target_metric = "loss_norm" 
+    target_metric = "loss" 
     target_mode="min"
 
     def get_config():
         config = {
-            "lr": tune.loguniform(1e-9, 1e-4),
-            "weight_decay": tune.loguniform(1e-6, 1e-4),
-            "batch_size": tune.choice([4, 8, 16]),
-            "hidden_dim": tune.choice([128, 256]),
+            #"lr": tune.loguniform(1e-4, 3e-2),
+            "lr": tune.loguniform(1e-8, 1e-3),
+            "weight_decay": tune.loguniform(1e-7, 1e-3),
+            "batch_size": tune.choice([4, 8]),
+            "hidden_dim": tune.choice([128, 256, 512]),
         }
 
         if stack == "preferred_value":
@@ -76,10 +79,10 @@ def run_tuning(training_noise, stack):
             config["requires_grad"] = tune.choice([True, False])
         
         if "population" in stack:
-            config["sigma"] = tune.loguniform(0.5, 1.5)
+            config["sigma"] = tune.loguniform(0.2, 2.0)
             config["neurons"] = tune.choice([8, 12, 16])
-            config["orientation"] = tune.choice([(0,1),(-1,1),(-2,2),(-4,4),(-5,5)])
-            config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL, PreferredStimulus.LINEAR, PreferredStimulus.RAND_UNIFORM])
+            config["orientation"] = tune.choice([(0,1),(-1,1),(-2,2),(-3,3),(-4,4),(-5,5)])
+            config["stimulus"] = tune.choice([PreferredStimulus.RAND_NORMAL])
             config["output_encoding"] = True if stack == "population_encoding" else False
 
         if stack == "softmax_gaussian":
@@ -107,9 +110,12 @@ def run_tuning(training_noise, stack):
     search_alg = OptunaSearch(
         sampler=sampler,
         space=get_config(),
-        metric=["fsa_inf_mean_norm", "fsa_inf_mean_diff"],
-        mode=["max", "min"]
+        metric=["loss_sim"],
+        mode=["max"]
     )
+
+    import torch
+
 
     def load_data(): 
         ssl._create_default_https_context = ssl._create_unverified_context 
@@ -120,7 +126,7 @@ def run_tuning(training_noise, stack):
                 transforms.Lambda(clamp_transform)
             ])
         
-        dataset_loader = torchvision.datasets.MNIST if dataset == "mnist" else torchvision.datasets.CIFAR10
+        dataset_loader = torchvision.datasets.MNIST if dataset == "mnist" else torchvision.datasets.FashionMNIST
 
         training_data = dataset_loader(
             root="data",
@@ -138,7 +144,7 @@ def run_tuning(training_noise, stack):
 
         return training_data, test_data
 
-    input_dim = 784 if dataset == "mnist" else 32 * 32 * 3
+    input_dim = 784# if dataset == "mnist" else 32 * 32 * 3
     output_dim = 10
 
     def get_stack(config):
@@ -263,6 +269,8 @@ def run_tuning(training_noise, stack):
 
             for epoch in range(start_epoch, 10 + warmup): 
                 train_fsa_scores = {}
+                train_loss = 0
+                train_steps = 0
                 
                 for i, data in enumerate(trainloader, 0):
                     inputs, labels = data
@@ -276,6 +284,9 @@ def run_tuning(training_noise, stack):
                     loss = loss_fn(outputs, labels)
                     loss.backward()
                     optimizer.step()
+
+                    train_loss += loss.clone().detach().requires_grad_(False).numpy()
+                    train_steps += 1
 
                     roby_metric(outputs, inputs, p=float('inf'), metric=['fsa'],
                         append_to=train_fsa_scores)
@@ -311,21 +322,20 @@ def run_tuning(training_noise, stack):
                 mean = sum(val_fsa_scores["fsa_inf"]) / len(val_fsa_scores["fsa_inf"])
                 std = torch.std(torch.tensor(val_fsa_scores["fsa_inf"])).item()
 
+                loss_train = train_loss / train_steps
                 loss = val_loss / val_steps
+
+                if loss >= loss_train:
+                    loss_sim = 0
+                else:
+                    loss_sim = loss_train - loss
                 
-                if epoch == 0:
+                if epoch - warmup == 0:
                     loss_diff = loss
                     fsa_max = mean
 
                 mean_norm = mean - fsa_max
                 loss_norm = loss - loss_diff
-
-                
-
-                # if len(fsa_diff) < 1:
-                #     fsa_diff.append(mean)
-            
-                # fsa_diff.append(1 - (max(fsa_diff) / fsa_diff[0]))
 
                 checkpoint_data = {
                     "epoch": epoch,
@@ -353,7 +363,8 @@ def run_tuning(training_noise, stack):
                             "fsa_inf_mean_norm": mean_norm,
                             "fsa_inf_std": std,
                             "fsa_inf_mean_diff": mean_train - mean,
-                            "loss_norm": loss_norm
+                            "loss_norm": loss_norm,
+                            "loss_sim": loss_sim
                         },
                         checkpoint=checkpoint,
                     )
@@ -468,15 +479,16 @@ def run_tuning(training_noise, stack):
             result = tune.run(
                 partial(run, data_dir=data_dir),
                 #config=config,
-                num_samples=30,
+                num_samples=10,
                 scheduler=scheduler,
                 search_alg=search_alg,
-                max_concurrent_trials=12
+                max_concurrent_trials=10
             )
         except RayError as e:
             print(f"error: {e}")
 
         test_best_trial(result, metric=target_metric, mode="min")
+        #test_best_trial(result, metric="loss", mode="min")
 
         folder = Path('/Users/manuelsawade/ray_results')
         keep_count = 0
@@ -492,6 +504,6 @@ def run_tuning(training_noise, stack):
     main(identifier)
 
 if __name__ == "__main__":
-    for stack in ["preferred_value"]:
-        for noise in [0.5]:
+    for stack in ["population"]:
+        for noise in noise_levels:
             run_tuning(noise, stack)

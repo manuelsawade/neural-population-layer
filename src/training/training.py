@@ -173,7 +173,7 @@ class NeuronPopulationTraining(TrainingBase):
                 activation=self.hyper_parameter.activation,
                 stimulus=self.hyper_parameter.stimulus,
                 encoded_output=self.hyper_parameter.encoded_output),
-            nn.LazyLinear(self.hyper_parameter.dataset.output_dim),     
+            nn.LazyLinear(self.hyper_parameter.dataset.output_dim) 
             )
 
         self.run_stack(stack) 

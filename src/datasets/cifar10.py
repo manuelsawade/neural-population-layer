@@ -9,7 +9,7 @@ from datasets.noise import AddGaussianNoise
 
 
 class CIFAR10():    
-    input_dim = 32 * 32 * 3
+    input_dim = 784#32 * 32 * 3
     output_dim = 10
     name = "cifar10"
 
@@ -35,15 +35,15 @@ class CIFAR10():
 
         ssl._create_default_https_context = ssl._create_unverified_context  
 
-        training_data = datasets.CIFAR10(
-            root="data",
+        training_data = datasets.FashionMNIST(
+            root="data/new",
             train=True,
             download=True,
             transform=transform_with_noise
         )
 
-        test_data = datasets.CIFAR10(
-            root="data",
+        test_data = datasets.FashionMNIST(
+            root="data/new",
             train=False,
             download=True,
             transform=ToTensor()
