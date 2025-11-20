@@ -105,6 +105,17 @@ for i in range(n_neurons):
 sorted_idx = np.argsort(latencies)
 
 # --------------------- Plotting ----------------------------
+        # "linear": {
+        #     "1.0": "darkorange",
+        #     "0.5": "#FFA447",
+        #     "0.0": "#FFE0B2",
+        # },
+        # "population": {
+        #     "0.0": "#E0AAFF",
+        #     "0.5": "#9A58D0",
+        #     "1.0": "purple",
+a_color = "green"
+b_color = "#E0AAFF"
 
 fig, axes = plt.subplots(3, 2, figsize=(14, 12), gridspec_kw={"height_ratios": [2, 2, 2]})
 
@@ -122,8 +133,8 @@ ax4 = fig.add_subplot(gs[-1:, -1])
 #ax1, ax1b = axes[0]
 ax1.set_title("Spike Train")
 for row, idx in enumerate(sorted_idx):
-    ax1.vlines(spike_trains_A[idx], row+5.6, row+3.0, color="tab:blue")
-    ax1.vlines(spike_trains_B[idx], row+5.0, row+3.4, color="tab:red")
+    ax1.vlines(spike_trains_A[idx], row+5.6, row+3.0, color=a_color)
+    ax1.vlines(spike_trains_B[idx], row+5.0, row+3.4, color=b_color)
 ax1.set_ylim(-0.5, n_neurons + 0.5)
 ax1.set_ylabel("Neuron (sorted)")
 ax1.grid(True, linestyle=':')
@@ -133,24 +144,24 @@ ax1.grid(True, linestyle=':')
 #ax2, ax2b = axes[1]
 ax2.set_title("Spikes")
 for row, idx in enumerate(sorted_idx):
-    ax2.vlines(spike_trains_A[idx], row+5.5, row+3.4, color="tab:blue")
+    ax2.vlines(spike_trains_A[idx], row+5.5, row+3.4, color=a_color)
 ax2.set_ylim(0.5, n_neurons + 0.5)
 ax2.set_ylabel("Neuron (sorted)")
 ax2.grid(True, linestyle=':')
-#ax2b.axis("off")
+#ax2.axis("off")
 
 # Row 3: Activity Pattern A and B
 #sax3, ax4 = axes[2]
 
 # Pattern A
-ax3.plot(t, pattern_A, color="tab:blue")
+ax3.plot(t, pattern_A, color=a_color)
 ax3.set_title("Spike Pattern")
 ax3.set_ylabel("Activity")
 ax3.set_xlabel("Time (s)")
 ax3.grid(True, linestyle=':')
 
 # Pattern B
-ax4.plot(t, pattern_B, color="tab:red")
+ax4.plot(t, pattern_B, color=b_color)
 ax4.set_title("Spontaneous Activity")
 ax4.set_xlabel("Time (s)")
 ax4.grid(True, linestyle=':')

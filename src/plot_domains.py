@@ -1,68 +1,68 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# --- Helper functions ---
+# -------- Generate biologically-inspired tuning curves --------
 
-def gaussian_tuning(x, mu, sigma=15, height=1.0):
-    """Gaussian tuning curve."""
-    return height * np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+x = np.linspace(-3, 3, 400)
 
-def poisson_spikes(rate, T=1000, dt=1):
-    """Simulate Poisson spike trains for given rate (Hz)."""
-    n_steps = int(T / dt)
-    p_spike = rate * dt / 1000.0  # rate is in Hz, T in ms
-    return np.random.rand(n_steps) < p_spike
+# Gaussian tuning curve (neural selectivity peak)
+def gaussian(x, mu, sigma):
+    return np.exp(-0.5 * ((x - mu) / sigma)**2)
 
-# --- Setup stimulus space ---
-x = np.linspace(0, 180, 200)  # e.g. orientation in degrees
+tuning_curve = gaussian(x, 0, 0.8)
+enum = iter("abcdefg")
+# Mexican hat (difference-of-Gaussians: excitatory center, inhibitory surround)
+def mexican_hat(x, sigma_exc=0.5, sigma_inh=1.5, w_exc=1.0, w_inh=0.6):
+    exc = w_exc * np.exp(-0.5 * (x / sigma_exc)**2)
+    inh = w_inh * np.exp(-0.5 * (x / sigma_inh)**2)
+    return exc - inh
 
-# 1. Classical neuroscience: population of neurons with tuning curves
-neurons_pref = np.linspace(20, 160, 5)
-pop_curves = [gaussian_tuning(x, mu, sigma=20) for mu in neurons_pref]
+mex_curve = mexican_hat(x)
 
-# 2. Dynamic Field Theory: one continuous activation bump (represents population)
-dft_field = gaussian_tuning(x, 90, sigma=25, height=1.2)
+# Add slight noise for biological realism
+tuning_curve_noisy = tuning_curve + np.random.normal(0, 0.02, len(x))
+mex_curve_noisy = mex_curve + np.random.normal(0, 0.02, len(x))
 
-# 3. Deep learning population code (output layer representation)
-dl_outputs = [gaussian_tuning(x, mu, sigma=10, height=1.0) for mu in [60, 90, 120]]
-dl_code = np.sum(dl_outputs, axis=0)  # combined population output
+# -------- Plot --------
 
-# 4. Spiking Neural Networks: tuning via spike trains
-rates = [gaussian_tuning(90, mu, sigma=20, height=30) for mu in neurons_pref]
-spike_trains = [poisson_spikes(rate, T=500) for rate in rates]
-firing_rates = [np.mean(train) * 1000 for train in spike_trains]  # Hz
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-# --- Plotting ---
-fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+# Left: Gaussian tuning curve
+axes[0].plot(x, tuning_curve_noisy, color="orange", linewidth=2)
+axes[0].set_title("Gaussian Tuning Curve")
+axes[0].set_xlabel("Stimulus feature")
+axes[0].set_ylabel("Firing rate (a.u.)")
+axes[0].grid(True, linestyle=':', alpha=0.5)
+axes[0].text(
+    0.015,        # a little left of the axes
+    0.94,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=axes[0].transAxes
+)
 
-# Classical neuroscience
-for curve, mu in zip(pop_curves, neurons_pref):
-    axs[0, 0].plot(x, curve, label=f"Neuron {int(mu)}°")
-axs[0, 0].set_title("a) Gaussian Tuning Curve")
-axs[0, 0].set_xlabel("Stimulus (orientation, °)")
-axs[0, 0].set_ylabel("Activity over time")
-axs[0, 0].legend()
-
-# Dynamic field theory
-axs[0, 1].plot(x, dft_field, color="darkred", lw=2)
-axs[0, 1].set_title("b) Field Activity")
-axs[0, 1].set_xlabel("Feature space (orientation, °)")
-axs[0, 1].set_ylabel("Activation")
-
-# Deep learning population code
-for out in dl_outputs:
-    axs[1, 0].plot(x, out, linestyle="--", alpha=0.7)
-axs[1, 0].plot(x, dl_code, color="blue", lw=2, label="Population code (sum)")
-axs[1, 0].set_title("c) Output Population Code")
-axs[1, 0].set_xlabel("Output dimension")
-axs[1, 0].set_ylabel("Activation")
-axs[1, 0].legend()
-
-# Spiking neural networks
-axs[1, 1].bar([f"{int(mu)}°" for mu in neurons_pref], firing_rates, color="gray")
-axs[1, 1].set_title("d) Estimated Tuning Curve")
-axs[1, 1].set_ylabel("Continuous Activity")
+# Right: Mexican Hat (center-surround receptive field)
+axes[1].plot(x, mex_curve_noisy, color="purple", linewidth=2)
+axes[1].axhline(0, color="black", linewidth=0.5)
+axes[1].set_title("Mexican Hat")
+axes[1].set_xlabel("Stimulus feature")
+axes[1].grid(True, linestyle=':', alpha=0.5)
+axes[1].text(
+    0.015,        # a little left of the axes
+    0.94,                # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=axes[1].transAxes
+)
 
 plt.tight_layout()
-plt.savefig("population_code_domains.png")
-plt.close()
+
+fname = "population_code_domains.png"
+plt.savefig(fname, dpi=300)
+#
+
+
+
+# plt.tight_layout()
+# plt.savefig("population_code_domains.png")
+# plt.close()

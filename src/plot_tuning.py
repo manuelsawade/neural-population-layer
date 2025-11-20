@@ -87,14 +87,27 @@ gs = fig.add_gridspec(4, 2, height_ratios=[1.25,1, 1.25,1])
 # ax3 = fig.add_subplot(gs[-1, 0])
 # ax4 = fig.add_subplot(gs[-1:, -1])
 
+# --------------------- Plotting ----------------------------
+        # "linear": {
+        #     "1.0": "darkorange",
+        #     "0.5": "#FFA447",
+        #     "0.0": "#FFE0B2",
+        # },
+        # "population": {
+        #     "0.0": "#E0AAFF",
+        #     "0.5": "#9A58D0",
+        #     "1.0": "purple",
+a_color = "purple"
+b_color = "darkorange"
+
 # Raster A+B
 ax_raster_all = fig.add_subplot(gs[0, :])
-ax_raster_all.set_title("Spike Train")
+ax_raster_all.set_title("Sensory and Spontaneous Spike Trains")
 for row, idx in enumerate(sorted_idx):
-    ax_raster_all.vlines(spike_trains_A[idx], row+0.6, row+1.0, color="tab:blue")
-    ax_raster_all.vlines(spike_trains_B[idx], row+0.0, row+0.4, color="tab:red")
+    ax_raster_all.vlines(spike_trains_A[idx], row+0.6, row+1.0, color=a_color)
+    ax_raster_all.vlines(spike_trains_B[idx], row+0.0, row+0.4, color=b_color)
 ax_raster_all.set_ylim(-0.5, n_neurons + 0.5)
-ax_raster_all.set_ylabel("Neuron (sorted)")
+ax_raster_all.set_ylabel("Neuron")
 ax_raster_all.grid(True, linestyle=':')
 ax_raster_all.text(
     0.005,        # a little left of the axes
@@ -115,10 +128,10 @@ hist_A, _ = np.histogram(all_spikes_A, bins=bin_edges)
 hist_B, _ = np.histogram(all_spikes_B, bins=bin_edges)
 
 ax_psth_all = fig.add_subplot(gs[1, :])
-ax_psth_all.fill_between(bin_centers, hist_A, color="tab:blue", alpha=0.3)
-ax_psth_all.fill_between(bin_centers, hist_B, color="tab:red", alpha=0.3)
-ax_psth_all.plot(t, pattern_A * (max(hist_A)+2) / max(pattern_A), color="tab:blue")
-ax_psth_all.plot(t, pattern_B * (max(hist_B)+2) / max(pattern_B), color="tab:red")
+ax_psth_all.fill_between(bin_centers, hist_A, color=a_color, alpha=0.3)
+ax_psth_all.fill_between(bin_centers, hist_B, color=b_color, alpha=0.3)
+ax_psth_all.plot(t, pattern_A * (max(hist_A)+2) / max(pattern_A), color=a_color)
+ax_psth_all.plot(t, pattern_B * (max(hist_B)+2) / max(pattern_B), color=b_color)
 ax_psth_all.set_ylabel("PSTH")
 ax_psth_all.grid(True, linestyle=':')
 ax_psth_all.text(
@@ -133,11 +146,11 @@ fig.add_subplot(gs[1, 1]).axis("off")
 
 # Raster A only
 ax_raster_A = fig.add_subplot(gs[2, :])
-ax_raster_A.set_title("Spike Train")
+ax_raster_A.set_title("Sensory Spike Train")
 for row, idx in enumerate(sorted_idx):
-    ax_raster_A.vlines(spike_trains_A[idx], row+0.5, row+1.5, color="tab:blue")
+    ax_raster_A.vlines(spike_trains_A[idx], row+0.5, row+1.5, color=a_color)
 ax_raster_A.set_ylim(0.5, n_neurons + 0.5)
-ax_raster_A.set_ylabel("Neuron (sorted)")
+ax_raster_A.set_ylabel("Neuron")
 ax_raster_A.grid(True, linestyle=':')
 ax_raster_A.text(
     0.005,        # a little left of the axes
@@ -152,9 +165,9 @@ fig.add_subplot(gs[2, 1]).axis("off")
 # PSTH A only
 hist_Aonly, _ = np.histogram(all_spikes_A, bins=bin_edges)
 ax_psth_A = fig.add_subplot(gs[3, :])
-ax_psth_A.fill_between(bin_centers, hist_Aonly, color="tab:blue", alpha=0.3)
-ax_psth_A.plot(t, pattern_A * (max(hist_Aonly)+2) / max(pattern_A), color="tab:blue")
-ax_psth_A.set_ylabel("PSTH (A only)")
+ax_psth_A.fill_between(bin_centers, hist_Aonly, color=a_color, alpha=0.3)
+ax_psth_A.plot(t, pattern_A * (max(hist_Aonly)+2) / max(pattern_A), color=a_color)
+ax_psth_A.set_ylabel("PSTH")
 ax_psth_A.grid(True, linestyle=':')
 ax_psth_A.text(
     0.005,        # a little left of the axes
