@@ -1,76 +1,188 @@
-import os
-import json
-from pathlib import Path
-import pandas as pd
-import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import numpy as np
+import matplotlib.pyplot as plt
 
-from library import get_display_name
+# ---------------- Synthetic Data Generation With Biological Realism ----------------
+enum = iter("abcdefg")
+np.random.seed(42)
 
-def smooth_curve(values, weight=0.9):
-    """EMA smoothing (TensorBoard-like)"""
-    last = values[0]
-    smoothed = []
-    for v in values:
-        last = last * weight + (1 - weight) * v
-        smoothed.append(last)
-    return smoothed
+T = 2.0    # seconds
+fs = 100  # sampling rate
+t = np.linspace(0, T, int(T * fs))
 
-def get_latest_run_folder():
-    folder = Path('/Users/manuelsawade/ray_results')
-    for dir in sorted(folder.glob("run*"), reverse=True):
-        return dir
+def gaussian(x, mu, sigma):
+    return np.exp(-0.5 * ((x - mu) / sigma)**2)
 
-def plot_ray_tune_metric(run_path, metric_names, smoothing=0.0):
-    trials = []
-    print(f"Loading Ray Tune logs from: {run_path}")
+centers_A = np.linspace(0.3, 1.7, 5) + np.random.normal(0, 0.05, 5)
+centers_B = np.linspace(0.2, 1.8, 6) + np.random.normal(0, 0.05, 6)
 
-    # --- Load all trials ---
-    for root, dirs, files in os.walk(run_path):
-        for file in files:
-            if file == "progress.csv":
-                df = pd.read_csv(os.path.join(root, file))
-                df["trial"] = os.path.basename(root)
-                trials.append(df)
+pattern_A = np.zeros_like(t)
+pattern_B = np.zeros_like(t)
 
-    if not trials:
-        raise ValueError("No Ray Tune progress.csv files found in given path!")
+for c in centers_A:
+    pattern_A += gaussian(t, c, 0.08 + np.random.uniform(0.01, 0.05))
 
-    # Combine all trials
-    df_all = pd.concat(trials, ignore_index=True)
+for c in centers_B:
+    pattern_B += gaussian(t, c, 0.08 + np.random.uniform(0.01, 0.05))
 
-    # --- Plot ---
-    fig, axes = plt.subplots(len(metric_names), len(metric_names[0]),figsize=(12,5), sharex=True)
-    cmap = plt.get_cmap("tab10")
+pattern_A += np.random.normal(0, 0.05, len(t))
+pattern_B += np.random.normal(0, 0.05, len(t))
 
-    for ax_row, metric_row in zip(axes, metric_names):
-        for ax, metric_name in zip(ax_row, metric_row):
-            for i, (trial_name, group) in enumerate(df_all.groupby("trial")):
-                steps = group["training_iteration"] if "training_iteration" in group else np.arange(len(group))
-                values = group[metric_name].values
+pattern_A = (pattern_A - pattern_A.min()) / (pattern_A.max() - pattern_A.min()) * 3
+pattern_B = (pattern_B - pattern_B.min()) / (pattern_B.max() - pattern_B.min()) * 3
 
-                i_norm = (i - 0) / (len(df_all.groupby("trial")) - 0)
+n_neurons = 40
+spike_trains_A = []
+spike_trains_B = []
+latencies = []
 
-                ax.plot(
-                    steps, values,
-                    color=cmap(i_norm), linewidth=2
-                )
+peak_idx = np.argmax(pattern_A)
+peak_time = t[peak_idx]
 
-                ax.set_title(f"{get_display_name(metric_name)}", fontsize=14)
-                if "fsa" in metric_name:
-                    ax.set_xlabel("Training Iteration", fontsize=12)
+def enforce_refractory(spikes, refractory_ms=0.003):
+    if len(spikes) == 0:
+        return spikes
+    cleaned = [spikes[0]]
+    for s in spikes[1:]:
+        if s - cleaned[-1] > refractory_ms:
+            cleaned.append(s)
+    return np.array(cleaned)
 
-                #ax.set_ylabel(get_display_name(metric_name), fontsize=14)
-                ax.grid(True, linestyle="--", alpha=0.3)
+for i in range(n_neurons):
+    baseline = np.random.uniform(5, 15)
+    sens_A = np.random.uniform(0.5, 1.5)
+    sens_B = np.random.uniform(0.5, 1.5)
+    burst_factor = np.random.choice([1, 2.5], p=[0.7, 0.3])
+    
+    rate_A = baseline + sens_A * pattern_A
+    rate_B = baseline + sens_B * pattern_B
 
-    # Save figure
-    out_file = f"./images/tuning_trials.png"
-    plt.tight_layout()
-    plt.savefig(out_file, dpi=300)
-    plt.close(fig)
+    prob_A = (rate_A / np.max(rate_A)) * 0.01 * burst_factor
+    prob_B = (rate_B / np.max(rate_B)) * 0.01 * burst_factor
 
-    print(f"Saved plot → {out_file}")
+    spikes_A = t[np.random.rand(len(t)) < prob_A]
+    spikes_B = t[np.random.rand(len(t)) < prob_B]
 
+    spikes_A = enforce_refractory(spikes_A)
+    spikes_B = enforce_refractory(spikes_B)
 
-# Example usage:
-plot_ray_tune_metric(get_latest_run_folder(), [["loss_norm", "loss"], ["fsa_inf_mean_norm", "fsa_inf_mean_diff"]])
+    spike_trains_A.append(spikes_A)
+    spike_trains_B.append(spikes_B)
+
+    if len(spikes_A) > 0:
+        latencies.append(np.mean(spikes_A - peak_time))
+    else:
+        latencies.append(5)
+
+sorted_idx = np.argsort(latencies)
+
+fig = plt.figure(figsize=(12, 6))
+gs = fig.add_gridspec(4, 2, height_ratios=[1.25,1, 1.25,1])
+
+# gs = GridSpec(3, 2, figure=fig)
+# ax1 = fig.add_subplot(gs[0, :])
+# ax2 = fig.add_subplot(gs[1, :])
+# # identical to ax1 = plt.subplot(gs.new_subplotspec((0, 0), colspan=3))
+# #ax2 = fig.add_subplot(gs[1, :-1])
+# ax3 = fig.add_subplot(gs[-1, 0])
+# ax4 = fig.add_subplot(gs[-1:, -1])
+
+# Raster A+B
+ax_raster_all = fig.add_subplot(gs[0, :])
+ax_raster_all.set_title("Spike Train")
+for row, idx in enumerate(sorted_idx):
+    ax_raster_all.vlines(spike_trains_A[idx], row+0.6, row+1.0, color="tab:blue")
+    ax_raster_all.vlines(spike_trains_B[idx], row+0.0, row+0.4, color="tab:red")
+ax_raster_all.set_ylim(-0.5, n_neurons + 0.5)
+ax_raster_all.set_ylabel("Neuron (sorted)")
+ax_raster_all.grid(True, linestyle=':')
+ax_raster_all.text(
+    0.005,        # a little left of the axes
+    0.82,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=ax_raster_all.transAxes
+)
+
+#fig.add_subplot(gs[0, 1]).axis("off")
+
+# PSTH A+B
+bin_edges = np.linspace(0, T, 80)
+bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+all_spikes_A = np.concatenate([spike_trains_A[i] for i in sorted_idx])
+all_spikes_B = np.concatenate([spike_trains_B[i] for i in sorted_idx])
+hist_A, _ = np.histogram(all_spikes_A, bins=bin_edges)
+hist_B, _ = np.histogram(all_spikes_B, bins=bin_edges)
+
+ax_psth_all = fig.add_subplot(gs[1, :])
+ax_psth_all.fill_between(bin_centers, hist_A, color="tab:blue", alpha=0.3)
+ax_psth_all.fill_between(bin_centers, hist_B, color="tab:red", alpha=0.3)
+ax_psth_all.plot(t, pattern_A * (max(hist_A)+2) / max(pattern_A), color="tab:blue")
+ax_psth_all.plot(t, pattern_B * (max(hist_B)+2) / max(pattern_B), color="tab:red")
+ax_psth_all.set_ylabel("PSTH")
+ax_psth_all.grid(True, linestyle=':')
+ax_psth_all.text(
+    0.005,        # a little left of the axes
+    0.80,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=ax_psth_all.transAxes
+)
+
+fig.add_subplot(gs[1, 1]).axis("off")
+
+# Raster A only
+ax_raster_A = fig.add_subplot(gs[2, :])
+ax_raster_A.set_title("Spike Train")
+for row, idx in enumerate(sorted_idx):
+    ax_raster_A.vlines(spike_trains_A[idx], row+0.5, row+1.5, color="tab:blue")
+ax_raster_A.set_ylim(0.5, n_neurons + 0.5)
+ax_raster_A.set_ylabel("Neuron (sorted)")
+ax_raster_A.grid(True, linestyle=':')
+ax_raster_A.text(
+    0.005,        # a little left of the axes
+    0.82,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=ax_raster_A.transAxes
+)
+
+fig.add_subplot(gs[2, 1]).axis("off")
+
+# PSTH A only
+hist_Aonly, _ = np.histogram(all_spikes_A, bins=bin_edges)
+ax_psth_A = fig.add_subplot(gs[3, :])
+ax_psth_A.fill_between(bin_centers, hist_Aonly, color="tab:blue", alpha=0.3)
+ax_psth_A.plot(t, pattern_A * (max(hist_Aonly)+2) / max(pattern_A), color="tab:blue")
+ax_psth_A.set_ylabel("PSTH (A only)")
+ax_psth_A.grid(True, linestyle=':')
+ax_psth_A.text(
+    0.005,        # a little left of the axes
+    0.80,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=ax_psth_A.transAxes
+)
+
+fig.add_subplot(gs[3, 1]).axis("off")
+
+# Activity patterns
+# ax_A = fig.add_subplot(gs[4:, 0])
+# ax_A.plot(t, pattern_A, color="tab:blue")
+# ax_A.set_title("Activity Pattern A (Gaussian Tuning Curves)")
+# ax_A.set_ylabel("Activity")
+# ax_A.set_xlabel("Time (s)")
+# ax_A.grid(True, linestyle=':')
+
+# ax_B = fig.add_subplot(gs[4:, 1])
+# ax_B.plot(t, pattern_B, color="tab:red")
+# ax_B.set_title("Activity Pattern B (Gaussian Tuning Curves)")
+# ax_B.set_xlabel("Time (s)")
+# ax_B.grid(True, linestyle=':')
+
+plt.tight_layout()
+
+fname = "spike.png"
+plt.savefig(fname, dpi=300)
+
+fname
