@@ -48,7 +48,7 @@ class HyperParameter:
         }
 
     def get_output_folder(self, base: str = './experiments'):
-        return f'{base}/{self.identifier}/'
+        return f'{base}/{self.identifier}'
     
     def _dateToString(self, datetime: datetime) -> str:
         return datetime.strftime("%Y_%m_%d_%H_%M_%S")

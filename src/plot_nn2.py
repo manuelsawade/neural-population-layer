@@ -115,7 +115,7 @@ class NeuralNetwork():
 
         pyplot.axis('scaled')
         pyplot.axis('off')
-        pyplot.title( 'Neural Network Architecture', fontsize=24)
+        #pyplot.title( 'Neural Network Architecture', fontsize=24)
         pyplot.savefig(f"{library.get_target_image(__file__)}", dpi=300)
 
 class DrawNN():

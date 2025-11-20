@@ -7,8 +7,8 @@ orientations = [(-4,4), (-2,2), (-3,3)]  # three neurons with same
 input_positions = [-2, 0, 2]  # three input stimuli
 sigmas = [1.0, 1.0, 1.2]
 neurons = [12, 6, 8]
-cmap = cm.get_cmap("plasma")
-
+cmap = cm.get_cmap("magma")
+enum = iter("abcdefg")
 # Create figure with 3 columns × 2 rows (top = curve, bottom = heatmap)
 fig, axes = plt.subplots(3, 3, figsize=(10, 4), gridspec_kw={'height_ratios': [3, 0.4, 0.4]})
 
@@ -28,6 +28,14 @@ for i, pos in enumerate(input_positions):
     ax_curve.set_title(f"Input = {pos}")
     ax_curve.grid(True, linestyle=':', alpha=0.6)
     ax_curve.set_xticks([])
+
+    ax_curve.text(
+    0.02,        # a little left of the axes
+    0.92,               # same vertical height as the title
+    f"{next(enum)})",
+    fontsize=11, fontweight="bold",
+    transform=ax_curve.transAxes
+)
 
     ax_curve.legend([rf'$\sigma = {sigmas[i]}$'], loc='lower right')
 

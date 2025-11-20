@@ -30,7 +30,7 @@ print("x", x)
 input_values = torch.randn(1, n_neurons)
 input_values = F.normalize(input_values, p=float("inf"))
 
-cmap = cm.get_cmap("plasma")
+cmap = cm.get_cmap("magma")
 
 fig, axes = plt.subplots(4, 2, figsize=(14, 8), gridspec_kw={'height_ratios': [3, 0.4, 3, 0.4]}, sharex=True)
 

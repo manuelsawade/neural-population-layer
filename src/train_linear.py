@@ -54,6 +54,10 @@ if __name__ == '__main__':
     with ProcessPoolExecutor(max_workers=3) as executor:
         list(executor.map(run, file_paths))
 
+if __name__ == '__main__':
+    with ProcessPoolExecutor(max_workers=3) as executor:
+        list(executor.map(run, file_paths))
+
 
 
 # torch.Size([128])
