@@ -55,7 +55,7 @@ def run_tuning(training_noise, stack):
     #stack = "population_encoding"
     #stack = "softmax_gaussian"
     #stack = "preferred_value"
-    target_metric = "loss" 
+    target_metric = "loss_norm" 
     target_mode="min"
 
     def get_config():
@@ -63,8 +63,8 @@ def run_tuning(training_noise, stack):
             #"lr": tune.loguniform(1e-4, 3e-2),
             "lr": tune.loguniform(1e-8, 1e-3),
             "weight_decay": tune.loguniform(1e-7, 1e-3),
-            "batch_size": tune.choice([4, 8]),
-            "hidden_dim": tune.choice([128, 256, 512]),
+            "batch_size": tune.choice([4, 8, 16]),
+            "hidden_dim": tune.choice([256, 512]),
         }
 
         if stack == "preferred_value":
@@ -110,8 +110,8 @@ def run_tuning(training_noise, stack):
     search_alg = OptunaSearch(
         sampler=sampler,
         space=get_config(),
-        metric=["loss_sim"],
-        mode=["max"]
+        metric=["loss_sim", "fsa_inf_mean_norm"],
+        mode=["max", "max"]
     )
 
     import torch
