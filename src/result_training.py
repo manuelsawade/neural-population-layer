@@ -53,8 +53,8 @@ def load_csv_files(folder: str, linear_folder: str) -> pd.DataFrame:
     return pd.concat(dataframes)
 
 def main():
-    dataset = "cifar10"
-    identifier = f"{dataset}_evaluation_population"
+    dataset = "mnist"
+    identifier = f"{dataset}_evaluation_population_data"
     folder = f"./experiments/{identifier}/"
     linear_folder = f"./experiments/{dataset}_evaluation_linear/"
     print("Loading JSON files...")
